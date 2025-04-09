@@ -8,7 +8,7 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 
 # Get individual statistics from raw data: mean accuracy and mean and variance of correct-RT
-getStatistics <- function(data){
+get_summaryStats <- function(data){
     # Check if required columns exist in the data
     if(is.null(data[,"accuracy"]) || is.null(data[,"rt"])){
       stop("Data not available.")
@@ -41,10 +41,16 @@ getStatistics <- function(data){
         # Calculate variance of reaction time per subject
         var_rt  <- tapply(data[,"rt"], data[,"sub"], var)
         
+        # Calculate median reaction time per subject
+        median_rt <- tapply(data[,"rt"], data[,"sub"], median)
+        
+        # Calculate interquartile range of reaction time per subject
+        iqr_rt <- tapply(data[,"rt"], data[,"sub"], IQR)
+        
         # Combine all statistics into a single matrix
-        data_statistics <- cbind(subID, sum_correct, mean_accuracy, mean_rt, var_rt)
+        data_statistics <- cbind(subID, sum_correct, mean_accuracy, mean_rt, var_rt, median_rt, iqr_rt)
         data_statistics <- as.matrix(data_statistics)
-        colnames(data_statistics) = c("sub", "sum_correct","meanAccuracy", "meanRT", "varRT")
+        colnames(data_statistics) = c("sub", "sum_correct","meanAccuracy", "meanRT", "varRT", "medianRT", "iqrRT")
     
     # Case 2: Data has more than 3 columns, including a condition variable
     }else{
@@ -60,6 +66,12 @@ getStatistics <- function(data){
         # Calculate variance of reaction time per subject and condition
         var_rt  <- tapply(data[,"rt"], list(data[,"sub"], data[,"cond"]), var)
         
+        # Calculate median reaction time per subject and condition
+        median_rt <- tapply(data[,"rt"], list(data[,"sub"], data[,"cond"]), median)
+        
+        # Calculate interquartile range of reaction time per subject and condition
+        iqr_rt <- tapply(data[,"rt"], list(data[,"sub"], data[,"cond"]), IQR)
+        
         # Extract unique subject and condition IDs
         subID <- unique(data[,"sub"])
         condID <- unique(data[,"cond"])
@@ -70,8 +82,8 @@ getStatistics <- function(data){
         cond <- rep(condID, length(subID))
         
         # Initialize the output matrix
-        data_statistics <- matrix(NA, ncol=6, nrow=length(cond))
-        colnames(data_statistics) = c("sub", "cond", "sum_correct","meanAccuracy", "meanRT", "varRT")
+        data_statistics <- matrix(NA, ncol=8, nrow=length(cond))
+        colnames(data_statistics) = c("sub", "cond", "sum_correct","meanAccuracy", "meanRT", "varRT", "medianRT", "iqrRT")
         
         # Fill in subject and condition columns
         data_statistics[,"sub"] <- sub
@@ -89,6 +101,8 @@ getStatistics <- function(data){
             data_statistics[row_indices, "meanAccuracy"] <- mean_accuracy[, as.character(i)]
             data_statistics[row_indices, "meanRT"] <- mean_rt[, as.character(i)]
             data_statistics[row_indices, "varRT"] <- var_rt[, as.character(i)]
+            data_statistics[row_indices, "medianRT"] <- median_rt[, as.character(i)]
+            data_statistics[row_indices, "iqrRT"] <- iqr_rt[, as.character(i)]
         }
     }
     
