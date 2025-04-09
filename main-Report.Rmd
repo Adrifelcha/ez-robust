@@ -1,0 +1,95 @@
+---
+title: "Robust EZ-DDM explorations"
+author: "Adriana, Eunice, and Joachim"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::readthedown:
+    self_contained: true
+    thumbnails: false
+    lightbox: true
+    gallery: true
+    cards: false
+    highlight: tango
+    fig_width: 12 
+    fig_height: 8 
+    css: src/custom.css
+---
+
+```{r, echo = FALSE, message = FALSE}
+library(here)
+library(knitr)
+library(kableExtra) 
+library(tidyverse)
+library(R2jags)
+
+# Load custom functions
+for(archive in dir(here("src"))){    source(paste(here("src/"),archive,sep=""))     }
+```
+
+# Introduction
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Create the data frame
+my_data <- data.frame(
+  FactorB = c("EZ-DDM", "Robust EZ-DDM"),
+  FactorA1 = c("Test 1", "Test 4"),
+  FactorA2 = c("Test 2", "Test 5"),
+  FactorA3 = c("Test 3", "Test 6")
+)
+
+# Generate the table using kable
+kable(my_data, 
+      col.names = c("Model","Clean trial-by-trial data", "Clean summary statistic data", "Trial-by-trial data with outliers"), # Set column names, empty for the first
+      align = 'lccc') %>%                        # Align columns (left, center, center)
+  kable_styling(bootstrap_options = c("striped", "bordered"), # Add styling
+                full_width = FALSE)             # Prevent table from spanning full page width
+```
+
+
+## True parameter values
+
+```{r}
+# True hierarchical means
+drift_mean <- 0      # Drift rate mean
+bound_mean <- 1.5    # Boundary separation mean
+nondt_mean <- 0.4    # Non-decision time mean
+
+# Design settings
+nParticipants <- 40
+nTrials <- 160
+```
+
+```{r}
+# Create a set of individual parameters
+indiv_params <- sample_indivParams(n_participants = nParticipants, 
+                                   dmean = drift_mean, bmean = bound_mean, nmean = nondt_mean)
+
+# Print the first 10 rows showing the individual parameters
+head(indiv_params, 10)
+```
+
+
+# Test 1 and 2: Clean trial-by-trial data
+
+Tests 1 and 2 use clean data sampled from a Wiener process.
+
+## Test 1: EZ-DDM
+
+## Test 2: Robust EZ-DDM
+
+# Test 3 and 4: Clean summary statistic data
+
+Tests 3 and 4 use clean data (i.e., no outliers), but instead of generating trial-by-trial data, we use the EZ-DDM equations and implied sampling distribution to generate summary statistics.
+
+## Test 3: EZ-DDM with outliers
+
+## Test 4: Robust EZ-DDM with outliers
+
+# Test 5 and 6: Trial-by-trial data with outliers
+
+Tests 5 and 6 use trial-by-trial data, with outlier RTs.
+
+## Test 5: EZ-DDM with outliers
+
+## Test 6: Robust EZ-DDM with outliers
+
