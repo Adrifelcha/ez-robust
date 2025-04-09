@@ -7,7 +7,7 @@
 
         <meta name="author" content="Adriana, Eunice, and Joachim" />
     
-        <meta name="date" content="2025-04-08" />
+        <meta name="date" content="2025-04-09" />
     
     <title>Robust EZ-DDM explorations</title>
 
@@ -1658,7 +1658,7 @@ border: 0;
         <style type="text/css">code{white-space: pre;}</style>
     <style type="text/css">
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -1669,7 +1669,7 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
 { counter-reset: source-line 0; }
@@ -1817,9 +1817,13 @@ margin-left: 0 !important;
       <ul>
       <li><a href="#true-parameter-values" id="toc-true-parameter-values">True parameter values</a></li>
       </ul></li>
+      <li><a href="#bayesian-ez-ddm-model" id="toc-bayesian-ez-ddm-model">Bayesian EZ-DDM model</a></li>
       <li><a href="#test-1-and-2-clean-trial-by-trial-data" id="toc-test-1-and-2-clean-trial-by-trial-data">Test 1 and 2:
       Clean trial-by-trial data</a>
       <ul>
+      <li><a href="#get-data" id="toc-get-data">Get data</a></li>
+      <li><a href="#compute-summary-statistics-from-trial-by-trial-data" id="toc-compute-summary-statistics-from-trial-by-trial-data">Compute
+      summary statistics from trial-by-trial data</a></li>
       <li><a href="#test-1-ez-ddm" id="toc-test-1-ez-ddm">Test 1:
       EZ-DDM</a></li>
       <li><a href="#test-2-robust-ez-ddm" id="toc-test-2-robust-ez-ddm">Test 2: Robust EZ-DDM</a></li>
@@ -1845,7 +1849,7 @@ margin-left: 0 !important;
     <div id="postamble" data-toggle="wy-nav-shift" class="status">
                   <p class="author"><span class="glyphicon glyphicon-user"></span> Adriana,
 Eunice, and Joachim</p>
-                        <p class="date"><span class="glyphicon glyphicon-calendar"></span> 2025-04-08</p>
+                        <p class="date"><span class="glyphicon glyphicon-calendar"></span> 2025-04-09</p>
           </div>
    </div>
      
@@ -1922,21 +1926,81 @@ Test 6
 <span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="co"># Print the first 10 rows showing the individual parameters</span></span>
 <span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="fu">head</span>(indiv_params, <span class="dv">10</span>)</span></code></pre></div>
 <pre><code>##        bound      drift     nondt
-## 1  1.8262191  0.2501929 0.4736144
-## 2  1.3451847  0.1004675 0.3983610
-## 3  1.1465778 -2.4235964 0.1548904
-## 4  0.9727921 -0.8007139 0.3112634
-## 5  0.6028850  2.1264030 0.3598254
-## 6  1.2118231  0.1629613 0.4770404
-## 7  1.0443926  0.4928815 0.3535904
-## 8  1.5956934  0.6874720 0.4531414
-## 9  1.1784190  0.4510275 0.3496941
-## 10 1.2226287  2.0112891 0.1092598</code></pre>
+## 1  1.8934891  0.6592933 0.5165196
+## 2  0.4154574  2.6142217 0.3998236
+## 3  1.3578240 -0.3904080 0.3210281
+## 4  1.5753579 -0.2107053 0.5191586
+## 5  1.9314869 -0.1220493 0.4680222
+## 6  1.2356157 -0.4622348 0.1951274
+## 7  1.7323923  0.0471247 0.2995438
+## 8  1.9253149 -1.7163410 0.3834067
+## 9  1.9800261 -0.6531672 0.3252531
+## 10 1.2566927  1.5945307 0.3654906</code></pre>
 </div>
+</div>
+<div id="bayesian-ez-ddm-model" class="section level1">
+<h1>Bayesian EZ-DDM model</h1>
+<pre><code>## model{
+##           bound_mean ~ dnorm(1.5,pow(1,-2))T(0.1,5)
+##           nondt_mean ~ dnorm(0.3,pow(0.5,-2))T(0.05,)
+##           drift_mean ~ dnorm(2,pow(1.5,-2))T(-3,3)
+##           bound_sdev ~ dunif(0.1,1)
+##           nondt_sdev ~ dunif(0.05,0.5)
+##           drift_sdev ~ dunif(0.2,1.5)
+## 
+##                 # Sampling model
+##                 for (p in 1:nParticipants){
+##                     bound[p] ~ dnorm(bound_mean, pow(bound_sdev, -2))T(0.1,5)
+##                     nondt[p] ~ dnorm(nondt_mean, pow(nondt_sdev, -2))T(0.05,)
+##                     drift[p] ~ dnorm(drift_mean, pow(drift_sdev, -2))T(-3,3)
+## 
+##                   # Forward equations from EZ Diffusion
+##                   ey[p]  = exp(-bound[p] * drift[p])
+##                   Pc[p]  = 1 / (1 + ey[p])
+##                   PRT[p] = 2 * pow(drift[p], 3) / bound[p] * pow(ey[p] + 1, 2) / (2 * -bound[p] * drift[p] * ey[p] - ey[p]*ey[p] + 1)
+##                   MDT[p] = (bound[p] / (2 * drift[p])) * (1 - ey[p]) / (1 + ey[p])
+##                   MRT[p] = MDT[p] + nondt[p]
+## 
+##                   # Loss functions using MRT, PRT, and Pc
+##                   correct[p] ~ dbin(Pc[p], nTrialsPerPerson)
+##                   meanRT[p]  ~ dnorm(MRT[p], PRT[p] * nTrialsPerPerson)
+##                   varRT[p]   ~ dnorm(1/PRT[p], 0.5*(nTrialsPerPerson-1) * PRT[p] * PRT[p])
+##               }
+##       }</code></pre>
 </div>
 <div id="test-1-and-2-clean-trial-by-trial-data" class="section level1">
 <h1>Test 1 and 2: Clean trial-by-trial data</h1>
 <p>Tests 1 and 2 use clean data sampled from a Wiener process.</p>
+<div id="get-data" class="section level2">
+<h2>Get data</h2>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>data_cleanFull <span class="ot">&lt;-</span> <span class="fu">sample_data</span>(<span class="at">nPart =</span> nParticipants, <span class="at">nTrials =</span> nTrials, <span class="at">parameter_set =</span> indiv_params)</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="fu">head</span>(data_cleanFull)</span></code></pre></div>
+<pre><code>##      sub        rt accuracy
+## [1,]   1 2.5935196        1
+## [2,]   1 1.7365196        1
+## [3,]   1 1.1155196        1
+## [4,]   1 1.3055196        0
+## [5,]   1 0.7745196        1
+## [6,]   1 0.6945196        1</code></pre>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">table</span>(data_cleanFull[,<span class="st">&quot;sub&quot;</span>])</span></code></pre></div>
+<pre><code>## 
+##   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20 
+## 160 160 160 160 160 160 160 160 160 160 160 160 160 160 160 160 160 160 160 160 
+##  21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40 
+## 160 160 160 160 160 160 160 160 160 160 160 160 160 160 160 160 160 160 160 160</code></pre>
+</div>
+<div id="compute-summary-statistics-from-trial-by-trial-data" class="section level2">
+<h2>Compute summary statistics from trial-by-trial data</h2>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>summStats <span class="ot">&lt;-</span> <span class="fu">get_summaryStats</span>(data_cleanFull)</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="fu">head</span>(summStats)</span></code></pre></div>
+<pre><code>##   sub sum_correct meanAccuracy    meanRT       varRT  medianRT   iqrRT
+## 1   1         128      0.80000 1.2911821 0.417776263 1.0925196 0.59200
+## 2   2         127      0.79375 0.4480486 0.001585836 0.4348236 0.03400
+## 3   3          61      0.38125 0.7964156 0.142972641 0.7065281 0.41225
+## 4   4          72      0.45000 1.2295211 0.283650950 1.1046586 0.65975
+## 5   5          68      0.42500 1.4733160 0.688564360 1.2550222 0.78875
+## 6   6          60      0.37500 0.6293774 0.163755824 0.5171274 0.27950</code></pre>
+</div>
 <div id="test-1-ez-ddm" class="section level2">
 <h2>Test 1: EZ-DDM</h2>
 </div>
