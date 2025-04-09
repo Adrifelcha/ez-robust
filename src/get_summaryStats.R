@@ -4,6 +4,9 @@
 # - mean accuracy (and number of correct responses)
 # - mean RT
 # - variance of RT
+# - median RT
+# - interquartile range (IQR) of RT
+# - variance of RT approximated from the IQR
 # These summary statistics are computed per cell design
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 
@@ -71,6 +74,9 @@ get_summaryStats <- function(data){
         
         # Calculate interquartile range of reaction time per subject and condition
         iqr_rt <- tapply(data[,"rt"], list(data[,"sub"], data[,"cond"]), IQR)
+
+        # Approximate the RT variance from the IQR
+        iqr_varRT <- (iqr_rt/1.349)^2
         
         # Extract unique subject and condition IDs
         subID <- unique(data[,"sub"])
@@ -103,6 +109,7 @@ get_summaryStats <- function(data){
             data_statistics[row_indices, "varRT"] <- var_rt[, as.character(i)]
             data_statistics[row_indices, "medianRT"] <- median_rt[, as.character(i)]
             data_statistics[row_indices, "iqrRT"] <- iqr_rt[, as.character(i)]
+            data_statistics[row_indices, "iqrVarRT"] <- iqr_varRT[, as.character(i)]
         }
     }
     
