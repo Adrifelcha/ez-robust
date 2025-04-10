@@ -72,29 +72,45 @@ head(indiv_params, 10)
 # Bayesian EZ-DDM model
 
 ```{r, echo=FALSE}
+# Prepare the parameters defining the prior distributions
 priors <- list(
-      # Priors for Hierarchical Means (Normal)
+      # Priors for Population Means (Normal distributions)
       bound_mean_mean = 1.5, bound_mean_sdev = 1.0,
       nondt_mean_mean = 0.3, nondt_mean_sdev = 0.5,
       drift_mean_mean = 2.0, drift_mean_sdev = 1.5,
 
-      # Priors for Hierarchical Standard Deviations (Uniform)
+      # Priors for Population-level Standard Deviations (Uniform)
       bound_sdev_lower = 0.1, bound_sdev_upper = 1.0,
       nondt_sdev_lower = 0.05, nondt_sdev_upper = 0.5,
       drift_sdev_lower = 0.2, drift_sdev_upper = 1.5
 )
 
-# Load the JAGS model
+# Write the JAGS model if not already written
 modelFile <- here::here("output", "BUGS-models", "JAGS_model.txt")
 if(!file.exists(modelFile)){
   JAGS_writeModel(priors = priors, modelFile = modelFile, custom_truncation_list = NULL)
-}else{
-  # If the file exists, read its content and print it
-  model_content <- readLines(modelFile)
-  cat(model_content, sep = "\n")
 }
+
+# Print the JAGS model to the console
+model_content <- readLines(modelFile)
+cat(model_content, sep = "\n")
 ```
 
+## JAGS setup
+
+```{r}
+# General setup
+n.chains  <- 4;      n.iter    <- 3500
+n.burnin  <- 250;    n.thin    <- 1
+
+# Specify parameters to keep track of
+parameters <- c('bound_mean', 'nondt_mean', 'drift_mean', 'bound', 'nondt', 'drift')
+
+myinits <- rep(list(list()), n.chains)
+          for(i in 1:n.chains){
+              myinits[[i]] <- list(drift = rnorm(nParticipants,1,0.1))
+          }
+```
 
 # Test 1 and 2: Clean trial-by-trial data
 
@@ -114,10 +130,109 @@ summStats <- get_summaryStats(data_cleanFull)
 head(summStats)
 ```
 
-
 ## Test 1: EZ-DDM
 
+```{r}
+# We use the EZ-DDM summary statistics to pass data to JAGS
+data_toJAGS <- list("nTrialsPerPerson"  =  nTrials,
+                    "nParticipants"    =  nParticipants,
+                    "meanRT"   =  summStats[,"meanRT"],
+                    "varRT"    =  summStats[,"varRT"],
+                    "correct"  =  summStats[,"sum_correct"])
+```
+
+```{r, warning = FALSE, results = "hide"}
+start <- Sys.time()
+samples <- jags(data=data_toJAGS, parameters.to.save=parameters,
+                model=modelFile, n.chains=n.chains,  n.iter=n.iter,
+                n.burnin=n.burnin,  n.thin=n.thin, DIC=T, inits=myinits,
+                quiet=TRUE)
+end <- Sys.time()
+```
+
+```{r, echo=FALSE}
+cat("Time taken:", round(difftime(end, start, units = "secs"), 2), "seconds")
+```
+
+```{r, echo=FALSE}
+# Extract the posterior samples
+bound_mean1 <- samples$BUGSoutput$sims.list$bound_mean
+nondt_mean1 <- samples$BUGSoutput$sims.list$nondt_mean
+drift_mean1 <- samples$BUGSoutput$sims.list$drift_mean
+```
+
+```{r, echo=FALSE}
+# Find the maximum density value across all three parameters
+max_density <- max(
+  max(density(bound_mean1)$y),
+  max(density(nondt_mean1)$y),
+  max(density(drift_mean1)$y)
+)
+
+# Set up the plotting area with 3 panels side by side
+par(mfrow=c(1,3), mar=c(4,4,2,2))
+
+# Plot each posterior with the same y-axis limit
+
+plot_posterior <- function(density_data, parameter_name, color, max_density=NA, true_value=NA){
+  if(is.na(max_density)){
+    max_density <- max(density(density_data)$y)
+  }
+
+  minX <- min(c(min(density(density_data)$x), -0.1))
+  maxX <- max(c(max(density(density_data)$x), 0.1))
+
+  if(parameter_name == "bound_mean"){
+    main_title <- "Hierarchical mean boundary separation"
+    color <- "red"
+  } else if(parameter_name == "nondt_mean"){
+    main_title <- "Hierarchical mean non-decision time"
+    color <- "darkgreen"
+  } else if(parameter_name == "drift_mean"){
+    main_title <- "Hierarchical mean drift rate"
+    color <- "blue"
+  }
+
+  plot(density(density_data), main=main_title, ylim=c(0, max_density), xlim=c(minX, maxX), ann=FALSE, axes=FALSE)
+  polygon(density(density_data), col=rgb(0.8, 0.2, 0.2, 0.5), border="red")
+
+  if(!is.na(true_value)){
+    abline(v = true_value, col = "black", lty = 2)
+  }
+}
+
+plot_posterior(bound_mean1, "bound_mean", "red", max_density)
+plot_posterior(nondt_mean1, "nondt_mean", "darkgreen", max_density)
+plot_posterior(drift_mean1, "drift_mean", "blue", max_density)
+
+# Reset the plotting parameters
+par(mfrow=c(1,1))
+```
+
+
 ## Test 2: Robust EZ-DDM
+
+```{r}
+# We use the EZ-DDM summary statistics to pass data to JAGS
+data_toJAGS <- list("nTrialsPerPerson"  =  nTrials,
+                    "nParticipants"    =  nParticipants,
+                    "meanRT"   =  summStats[,"medianRT"],
+                    "varRT"    =  summStats[,"iqrRT"],
+                    "correct"  =  summStats[,"sum_correct"])
+```
+
+```{r, warning = FALSE, results = "hide"}
+start <- Sys.time()
+samples <- jags(data=data_toJAGS, parameters.to.save=parameters,
+                model=modelFile, n.chains=n.chains,  n.iter=n.iter,
+                n.burnin=n.burnin,  n.thin=n.thin, DIC=T, inits=myinits,
+                quiet=TRUE)
+end <- Sys.time()
+```
+
+```{r, echo=FALSE}
+cat("Time taken:", round(difftime(end, start, units = "secs"), 2), "seconds")
+```
 
 # Test 3 and 4: Clean summary statistic data
 
