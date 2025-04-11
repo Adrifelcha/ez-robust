@@ -49,11 +49,14 @@ get_summaryStats <- function(data){
         
         # Calculate interquartile range of reaction time per subject
         iqr_rt <- tapply(data[,"rt"], data[,"sub"], IQR)
+
+        # Approximate the RT variance from the IQR
+        iqr_varRT <- (iqr_rt/1.349)^2
         
         # Combine all statistics into a single matrix
-        data_statistics <- cbind(subID, sum_correct, mean_accuracy, mean_rt, var_rt, median_rt, iqr_rt)
+        data_statistics <- cbind(subID, sum_correct, mean_accuracy, mean_rt, var_rt, median_rt, iqr_rt, iqr_varRT)
         data_statistics <- as.matrix(data_statistics)
-        colnames(data_statistics) = c("sub", "sum_correct","meanAccuracy", "meanRT", "varRT", "medianRT", "iqrRT")
+        colnames(data_statistics) = c("sub", "sum_correct","meanAccuracy", "meanRT", "varRT", "medianRT", "iqrRT", "iqrVarRT")
     
     # Case 2: Data has more than 3 columns, including a condition variable
     }else{
@@ -88,8 +91,8 @@ get_summaryStats <- function(data){
         cond <- rep(condID, length(subID))
         
         # Initialize the output matrix
-        data_statistics <- matrix(NA, ncol=8, nrow=length(cond))
-        colnames(data_statistics) = c("sub", "cond", "sum_correct","meanAccuracy", "meanRT", "varRT", "medianRT", "iqrRT")
+        data_statistics <- matrix(NA, ncol=9, nrow=length(cond))
+        colnames(data_statistics) = c("sub", "cond", "sum_correct","meanAccuracy", "meanRT", "varRT", "medianRT", "iqrRT", "iqrVarRT")
         
         # Fill in subject and condition columns
         data_statistics[,"sub"] <- sub
