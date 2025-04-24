@@ -33,9 +33,9 @@ for(archive in dir(here("src"))){    source(paste(here("src/"),archive,sep="")) 
 # Create the data frame
 my_data <- data.frame(
   FactorB = c("EZ-DDM", "Robust EZ-DDM"),
-  FactorA1 = c("Test 1", "Test 4"),
-  FactorA2 = c("Test 2", "Test 5"),
-  FactorA3 = c("Test 3", "Test 6")
+  FactorA1 = c("Test 1", "Test 2"),
+  FactorA2 = c("Test 3", "Test 4"),
+  FactorA3 = c("Test 5", "Test 6")
 )
 
 # Generate the table using kable
@@ -138,9 +138,6 @@ Tests 1 and 2 use clean data sampled from a Wiener process.
 ## Get data
 
 ```{r, file = here::here("src", "sample_trial.R")}
-```
-
-```{r, file = here::here("src", "sample_nTrials.R")}
 ```
 
 ```{r}
@@ -263,6 +260,84 @@ plot_posteriorDistributions(samples, color_scheme = c("darkgreen"), true_value =
 # Test 5 and 6: Trial-by-trial data with outliers
 
 Tests 5 and 6 use trial-by-trial data, with outlier RTs.
+
+## Get data
+
+```{r, file = here::here("src", "sample_nTrials.R")}
+```
+
+```{r}
+set.seed(seed)
+data_outlierFull <- sample_data(nPart = nParticipants, nTrials = nTrials, parameter_set = indiv_params, outlier_probability = 0.05)
+head(data_outlierFull)
+```
+
+## Compute summary statistics from trial-by-trial data
+
+```{r}
+summStats <- get_summaryStats(data_outlierFull)
+head(summStats)
+```
+
+## Test 1: EZ-DDM
+
+```{r}
+# We use the EZ-DDM summary statistics to pass data to JAGS
+data_toJAGS <- list("nTrialsPerPerson"  =  nTrials,
+                    "nParticipants"    =  nParticipants,
+                    "meanRT"   =  summStats[,"meanRT"],
+                    "varRT"    =  summStats[,"varRT"],
+                    "correct"  =  summStats[,"sum_correct"])
+```
+
+```{r, warning = FALSE, results = "hide"}
+set.seed(seed)
+start <- Sys.time()
+samples <- jags(data=data_toJAGS, parameters.to.save=parameters,
+                model=modelFile, n.chains=n.chains,  n.iter=n.iter,
+                n.burnin=n.burnin,  n.thin=n.thin, DIC=T, inits=myinits,
+                quiet=TRUE)
+end <- Sys.time()
+```
+
+```{r, echo=FALSE}
+cat("Time taken:", round(difftime(end, start, units = "secs"), 2), "seconds")
+```
+
+
+```{r, echo=FALSE, fig.height = 4, fig.width =8}
+plot_posteriorDistributions(samples, color_scheme = c("darkorange"), true_value = trueVals)
+```
+
+
+## Test 2: Robust EZ-DDM
+
+```{r}
+# We use the EZ-DDM summary statistics to pass data to JAGS
+data_toJAGS <- list("nTrialsPerPerson"  =  nTrials,
+                    "nParticipants"    =  nParticipants,
+                    "meanRT"   =  summStats[,"medianRT"],
+                    "varRT"    =  summStats[,"iqrVarRT"],
+                    "correct"  =  summStats[,"sum_correct"])
+```
+
+```{r, warning = FALSE, results = "hide"}
+set.seed(seed)
+start <- Sys.time()
+samples <- jags(data=data_toJAGS, parameters.to.save=parameters,
+                model=modelFile, n.chains=n.chains,  n.iter=n.iter,
+                n.burnin=n.burnin,  n.thin=n.thin, DIC=T, inits=myinits,
+                quiet=TRUE)
+end <- Sys.time()
+```
+
+```{r, echo=FALSE}
+cat("Time taken:", round(difftime(end, start, units = "secs"), 2), "seconds")
+```
+
+```{r, echo=FALSE, fig.height = 4, fig.width =8}
+plot_posteriorDistributions(samples, color_scheme = c("darkblue"), true_value = trueVals)
+```
 
 ## Test 5: EZ-DDM with outliers
 
