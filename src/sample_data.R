@@ -17,7 +17,8 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 # Sample data using simulation settings and true parameter values sampled
 sample_data <- function(nPart, nTrials = NA, parameter_set, 
-                        nTrialsPerCondition = NA, prevent_zero_accuracy = TRUE){
+                        nTrialsPerCondition = NA, prevent_zero_accuracy = TRUE,
+                        outlier_probability = 0){
   # Case 1: No conditions specified (single condition design)
   if(is.na(nTrialsPerCondition)){
         # Calculate total number of observations and initialize data matrix
@@ -37,7 +38,8 @@ sample_data <- function(nPart, nTrials = NA, parameter_set,
           temp <- sample_dataset(a = parameter_set$bound[i], 
                                  v = parameter_set$drift[i], 
                                  t = parameter_set$nondt[i], 
-                                 n = nTrials)
+                                 n = nTrials,
+                                 outlier_probability = outlier_probability)
           accuracy <- temp$accuracy
           
           # If prevent_zero_accuracy is TRUE and we got all zeros, keep trying
@@ -45,7 +47,8 @@ sample_data <- function(nPart, nTrials = NA, parameter_set,
             temp <- sample_dataset(a = parameter_set$bound[i], 
                                    v = parameter_set$drift[i], 
                                    t = parameter_set$nondt[i], 
-                                   n = nTrials)
+                                   n = nTrials,
+                                   outlier_probability = outlier_probability)
             accuracy <- temp$accuracy
           }
           
@@ -86,7 +89,8 @@ sample_data <- function(nPart, nTrials = NA, parameter_set,
                 temp <- sample_dataset(a = parameter_set$bound[i], 
                                        v = parameter_set$drift[j], 
                                        t = parameter_set$nondt[i], 
-                                       n = nTrialsPerCondition)
+                                       n = nTrialsPerCondition,
+                                       outlier_probability = outlier_probability)
                 accuracy <- temp$accuracy
                 
                 # If prevent_zero_accuracy is TRUE and we got all zeros, keep trying
@@ -94,7 +98,8 @@ sample_data <- function(nPart, nTrials = NA, parameter_set,
                   temp <- sample_dataset(a = parameter_set$bound[i], 
                                          v = parameter_set$drift[j], 
                                          t = parameter_set$nondt[i], 
-                                         n = nTrialsPerCondition)
+                                         n = nTrialsPerCondition,
+                                         outlier_probability = outlier_probability)
                   accuracy <- temp$accuracy
                 }
                 
