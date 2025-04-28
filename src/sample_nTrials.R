@@ -7,7 +7,7 @@
 # - n: number of trials
 # This function calls sample_trial() n times to generate a dataset of n trials
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
-sample_dataset <- function(a,v,t,n, outlier_probability = 0){
+sample_dataset <- function(a,v,t,n, contamination_probability = 0){
   # Set random walk emulation parameters
   dt = 0.001  # Time step size (in seconds)
   max_steps = 10 / dt  # Maximum number of steps (~10 seconds)
@@ -37,18 +37,16 @@ sample_dataset <- function(a,v,t,n, outlier_probability = 0){
   RT <- rt + t  # Add the non-decision time (t) to all reaction times
 
   # Add outliers, if requested
-  if(outlier_probability > 0){
-      # For every trial, we'll flip a coin...
-      coin_toss <- rbinom(n, 1, outlier_probability)
-      n_outliers <- sum(coin_toss)
-      # A 'successful' coin toss will lead to an outlier RT
-      if(n_outliers > 0){
-          # Generate random outliers
-          lower_outliers <- runif(n_outliers, 0, min(RT)*0.5)
-          upper_outliers <- runif(n_outliers, 1.8, 3)*max(RT)
-
-          choose_outliers <- sample(c(lower_outliers, upper_outliers), n_outliers, replace = FALSE)
-          RT[as.logical(coin_toss)] <- choose_outliers
+  # Check if there is a probability of contamination
+  if(contamination_probability > 0){
+      # Step 1: Decide which trials will be contaminated
+      coin_toss <- rbinom(n, 1, contamination_probability)      
+      # Step 2: Decide whether contaminant trials will be outliers in time or in accuracy
+      for(i in 1:n){
+        # Example...
+        if(coin_toss[i] == 1){
+          which_contaminant <- rbinom(1, 1, 0.5)
+        }
       }
   }
 
