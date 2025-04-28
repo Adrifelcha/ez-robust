@@ -19,8 +19,6 @@
 sample_data <- function(nPart, nTrials = NA, parameter_set, 
                         nTrialsPerCondition = NA, prevent_zero_accuracy = TRUE,
                         outlier_probability = 0){
-  # Case 1: No conditions specified (single condition design)
-  if(is.na(nTrialsPerCondition)){
         # Calculate total number of observations and initialize data matrix
         nObs <- nPart*nTrials
         data <- matrix(NA, ncol=3, nrow=nObs)
@@ -60,63 +58,6 @@ sample_data <- function(nPart, nTrials = NA, parameter_set,
         # Convert to matrix and add column names
         data <- as.matrix(data)
         colnames(data) <- c("sub", "rt", "accuracy")
-  
-  # Case 2: Conditions specified (factorial design)
-  } else {
-        # Calculate total observations (participants × trials × conditions)
-        # Assumes 2 conditions per participant
-        nObs <- nPart*nTrialsPerCondition*2
-        data <- matrix(NA, ncol=4, nrow=nObs)
-        
-        # Assign participant IDs
-        data[,1] <- rep(1:nPart, each=(nTrialsPerCondition*2))
-        
-        # Assign condition IDs (alternating blocks of 1s and 0s for each participant)        
-        data[,2] <- rep(rep(c(1,0), each=nTrialsPerCondition), nPart)
-        
-        # Counter for drift parameter index
-        j = 1
-        
-        # Generate data for each participant and condition
-        for(i in 1:nPart){
-            # For each condition (1 and 0)
-            for(k in c(1,0)){
-                # Identify rows for current participant and condition
-                this.cell <- which(data[,1]==i & data[,2]==k)
-                
-                # Generate dataset ensuring non-zero accuracy if required
-                # First generate the dataset once
-                temp <- sample_dataset(a = parameter_set$bound[i], 
-                                       v = parameter_set$drift[j], 
-                                       t = parameter_set$nondt[i], 
-                                       n = nTrialsPerCondition,
-                                       outlier_probability = outlier_probability)
-                accuracy <- temp$accuracy
-                
-                # If prevent_zero_accuracy is TRUE and we got all zeros, keep trying
-                while(sum(accuracy)==0 && prevent_zero_accuracy){
-                  temp <- sample_dataset(a = parameter_set$bound[i], 
-                                         v = parameter_set$drift[j], 
-                                         t = parameter_set$nondt[i], 
-                                         n = nTrialsPerCondition,
-                                         outlier_probability = outlier_probability)
-                  accuracy <- temp$accuracy
-                }
-                
-                # Store accuracy and reaction times
-                data[this.cell,4] <- accuracy
-                data[this.cell,3] <- temp$RT
-                
-                # Increment drift parameter index
-                # This allows different drift rates for different conditions
-                j = j+1
-            }
-        }
-        
-        # Convert to matrix and add column names
-        data <- as.matrix(data)
-        colnames(data) <- c("sub","cond","rt", "accuracy")    
-  }
   
   return(data)
 }
