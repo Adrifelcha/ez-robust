@@ -45,7 +45,25 @@ sample_dataset <- function(a,v,t,n, contamination_probability = 0){
       for(i in 1:n){
         # Example...
         if(coin_toss[i] == 1){
-          which_contaminant <- rbinom(1, 1, 0.5)
+          which_contaminant <- rbinom(1, 1, 0.5) # 0=RT, 1=accuracy 
+            if(which_contaminant==0){ # RT will be outlier
+              RT[i]<-RT[i]+runif(1, 3, 6) # adding time 3-6 seconds)
+              
+            }else { # accuracy outlier, replacing with a completely new distribution. 
+              tmp <- sample_trial(a, 0, dt, max_steps)
+              
+              # Determine accuracy based on the final evidence value
+              if(tmp$C > 0){  
+                # Hitting the upper boundary is considered a "correct" response
+                accuracy[i] <- 1
+              } else {      
+                # Hitting the lower boundary is considered an "incorrect" response
+                accuracy[i] <- 0  
+              }
+              
+              RT[i] <- tmp$RT + t
+        
+          }
         }
       }
   }
