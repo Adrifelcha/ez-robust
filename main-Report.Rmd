@@ -144,7 +144,7 @@ Tests 1 and 2 use clean data sampled from a Wiener process.
 set.seed(seed)
 data_cleanFull <- sample_data(nPart = nParticipants, nTrials = nTrials, parameter_set = indiv_params)
 head(data_cleanFull)
-```
+``` 
 
 ## Compute summary statistics from trial-by-trial data
 
@@ -268,7 +268,7 @@ Tests 5 and 6 use trial-by-trial data, with outlier RTs.
 
 ```{r}
 set.seed(seed)
-data_outlierFull <- sample_data(nPart = nParticipants, nTrials = nTrials, parameter_set = indiv_params, outlier_probability = 0.05)
+data_outlierFull <- sample_data(nPart = nParticipants, nTrials = nTrials, parameter_set = indiv_params, contamination_probability = 0.05)
 head(data_outlierFull)
 ```
 
@@ -340,6 +340,9 @@ plot_posteriorDistributions(samples, color_scheme = c("darkblue"), true_value = 
 ```
 
 ## Test 5: EZ-DDM with outliers
+
+
+
 
 ## Test 6: Robust EZ-DDM with outliers
 
