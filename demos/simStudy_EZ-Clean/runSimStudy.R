@@ -26,6 +26,7 @@ settings <- list("output.folder" = file.path(output_dir, "/"),
                  "participant_levels" = c(20,40,80,160,320),
                  "trial_levels" = c(20,40,80,160,320),
                  "beta_levels" = c(0, 0.1, 0.2, 0.4, 0.8),
+                 "contaminant_prob" = 0,
                  "nDatasets" = 1000,
                  "modelType" = "ttest",
                  "withinSubject" = TRUE,
@@ -107,8 +108,6 @@ resultado <- foreach(seed = 201:210,
                   }
 stopCluster(cl = my.cluster)
 
-
-#49,87
 
 
 resultado <- load_seedOutput(directory = here("demos", "simulation-studies", "generative_uniforms", "samples"),
