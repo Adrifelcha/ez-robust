@@ -47,7 +47,7 @@ identify_design <- function(nPart, nTrials, nTrialsPerCondition, parameter_set){
 
       if(withinSubject){
           data[,2] <- rep(rep(c(1,0), each=nTrialsPerCondition), nPart)
-          cell_index <- rep(1:nPart*2, each=nTrialsPerCondition)
+          cell_index <- rep(1:(nPart*2), each=nTrialsPerCondition)
       }
 
   return(list(data = data, nObs = nObs,
