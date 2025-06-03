@@ -120,9 +120,9 @@ get_simulation_data <- function(nPart, nTrials = NA, parameter_set,
         # Identify rows for current participant
         this.cell <- which(cell_index==i)
 
-        params <- list(bound = parameter_set$bound[i],
-                       drift = parameter_set$drift[i],
-                       nondt = parameter_set$nondt[i])
+        params <- list(bound = adjusted_parameter_set$bound[i],
+                       drift = adjusted_parameter_set$drift[i],
+                       nondt = adjusted_parameter_set$nondt[i])
         # Generate dataset for this participant using their specific parameters
         # First generate the dataset once
         temp <- sample_data(nPart, N, params, contamination_probability, prevent_zero_accuracy)
