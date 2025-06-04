@@ -47,6 +47,13 @@ SimStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
   if(is.null(settings$design_levels)&&length(settings$modelType)==1){
     settings$design_levels <- settings$modelType
   }
+
+  if(is.null(settings$separate_datasets)){ settings$separate_datasets <- FALSE }
+  if(is.null(settings$contaminant_prob)){ settings$contaminant_prob <- 0 }
+
+  if(settings$contaminant_prob==0){
+        settings$separate_datasets <- FALSE
+  }
   
   # Create a marker file to indicate simulation has started
   write('Seed has been initiated', paste(settings$output.folder, "seed-", seed, "_start.txt", sep=""))
@@ -106,7 +113,8 @@ SimStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                                                          true_sdevs = settings$true_sdevs, true_means = settings$true_means, 
                                                          modelType = d, X = X, Show = Show, prevent_zero_accuracy = prevent_zero_accuracy,
                                                          fixedBeta = b, withinSubject = settings$withinSubject,
-                                                         contamination_probability = settings$contaminant_prob)
+                                                         contamination_probability = settings$contaminant_prob,
+                                                         separate_datasets = settings$separate_datasets)
                                 
                                 # Attempt to run JAGS with error handling
                                 start_time <- Sys.time()
