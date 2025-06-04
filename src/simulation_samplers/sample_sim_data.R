@@ -70,17 +70,20 @@ identify_design <- function(nPart, nTrials, nTrialsPerCondition, parameter_set){
 # - nTrialsPerCondition: Number of trials per condition (used when conditions exist)
 # - parameter_set: A list containing parameter values for each participant
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
-sample_data <- function(nPart, N, params, contamination_probability = 0, prevent_zero_accuracy = FALSE){
+sample_data <- function(nPart, N, params, separate_datasets = FALSE,
+                        contamination_probability = 0, prevent_zero_accuracy = FALSE){
       # Generate dataset for this participant using their specific parameters
       # First generate the dataset once
       temp <- get_DDM_data(a = params$bound, v = params$drift, t = params$nondt, n = N,
-                           contamination_probability = contamination_probability)
+                           contamination_probability = contamination_probability,
+                           separate_datasets = separate_datasets)
       accuracy <- temp$accuracy
 
       # If prevent_zero_accuracy is TRUE and we got all zeros, keep trying
       while(sum(accuracy)==0 && prevent_zero_accuracy){
         temp <- get_DDM_data(a = params$bound, v = params$drift, t = params$nondt, n = N,
-                            contamination_probability = contamination_probability)
+                            contamination_probability = contamination_probability,
+                            separate_datasets = separate_datasets)
         accuracy <- temp$accuracy
       }
 
@@ -100,9 +103,13 @@ return(temp)
 # - contamination_probability: probability of contamination
 # - prevent_zero_accuracy: A flag (TRUE/FALSE) indicating if zero accuracy should be prevented
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
-get_simulation_data <- function(nPart, nTrials = NA, parameter_set, 
-                                nTrialsPerCondition = NA, contamination_probability = 0, prevent_zero_accuracy = FALSE){
+get_simulation_data <- function(nPart, nTrials = NA, parameter_set, nTrialsPerCondition = NA, 
+                                contamination_probability = 0, separate_datasets = FALSE, prevent_zero_accuracy = FALSE){
   
+  if(separate_datasets&&contamination_probability==0){
+    stop("Contamination probability must be greater than 0 when separate_datasets is TRUE")
+  }
+
   design <- identify_design(nPart, nTrials, nTrialsPerCondition, parameter_set)
             data <- design$data
             nObs <- design$nObs
@@ -125,7 +132,9 @@ get_simulation_data <- function(nPart, nTrials = NA, parameter_set,
                        nondt = adjusted_parameter_set$nondt[i])
         # Generate dataset for this participant using their specific parameters
         # First generate the dataset once
-        temp <- sample_data(nPart, N, params, contamination_probability, prevent_zero_accuracy)
+        temp <- sample_data(nPart = nPart, N = N, params = params, separate_datasets = separate_datasets,
+                            contamination_probability = contamination_probability, 
+                            prevent_zero_accuracy = prevent_zero_accuracy)
         data[this.cell,col_accuracy] <- temp$accuracy
         data[this.cell,col_rt] <- temp$RT
   }
