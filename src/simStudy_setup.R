@@ -19,7 +19,7 @@
 ###################################################################################
 simStudy_setup <- function(nPart, nTrials, nTrialsPerCondition=NULL, true_sdevs, true_means, modelType=NA, 
                            X=NA, Show=TRUE, prevent_zero_accuracy=TRUE, fixedBeta=NA, withinSubject=FALSE,
-                           contamination_probability = 0){
+                           contamination_probability = 0, separate_datasets = FALSE){
 
     if(Show){
         local_settings = list("nPart" = nPart, "nTrials" = nTrials, "modelType" = modelType, "nTrialsPerCondition" = nTrialsPerCondition)
@@ -34,6 +34,7 @@ simStudy_setup <- function(nPart, nTrials, nTrialsPerCondition=NULL, true_sdevs,
     rawData = get_simulation_data(nPart = nPart, nTrials = nTrials, parameter_set = parameter_set,
                                   nTrialsPerCondition = nTrialsPerCondition,
                                   contamination_probability = contamination_probability,
+                                  separate_datasets = separate_datasets,
                                   prevent_zero_accuracy = prevent_zero_accuracy)
 
     # Step 3: Calculate EZ summary statistics from the raw data
