@@ -1,17 +1,15 @@
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
-# This function takes the raw data (data) and returns the summary statistics 
-# needed by the EZ-DDM model:
-# - mean accuracy (and number of correct responses)
-# - mean RT
-# - variance of RT
-# - median RT
-# - interquartile range (IQR) of RT
-# - variance of RT approximated from the IQR
-# These summary statistics are computed per cell design
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
+# This R script contains four functions:
+# calculate_summaryStats(): Computes all EZ-DDM summary statistics from trial dataset
+# get_summaryStats(): Ensures summary statistics are computed from the correct dataset
+#################################################################################
 
-# Get individual statistics from raw data: mean accuracy and mean and variance of correct-RT
-get_summaryStats <- function(data){
+
+################################################################################
+# Function 1: Calculate summary statistics
+################################################################################
+# This function takes the raw data (data) and returns the summary statistics 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
+calculate_summaryStats <- function(data){
     # Check if required columns exist in the data
     if(is.null(data[,"accuracy"]) || is.null(data[,"rt"])){
       stop("Data not available.")
@@ -118,4 +116,20 @@ get_summaryStats <- function(data){
     
     # Return the matrix of summary statistics
     return(data_statistics)
+}
+
+################################################################################
+# Function 2: Get summary statistics
+################################################################################
+# This function ensures the calculate_summaryStats() function is called with the 
+# correct dataset
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
+get_summaryStats <- function(data, separate_datasets = FALSE){
+  if(separate_datasets){
+    clean_summary <- calculate_summaryStats(data$clean_data)
+    contaminated_summary <- calculate_summaryStats(data$contaminated_data)
+    return(list(clean_summary = clean_summary, contaminated_summary = contaminated_summary))
+  }else{
+    return(calculate_summaryStats(data))
+  }
 }
