@@ -142,13 +142,13 @@ get_simulation_data <- function(nPart, nTrials = NA, parameter_set, nTrialsPerCo
                             contamination_probability = contamination_probability, 
                             prevent_zero_accuracy = prevent_zero_accuracy)
         if(separate_datasets){
-          data[this.cell,col_accuracy] <- temp$accuracy
-          data[this.cell,col_rt] <- temp$RT          
-        }else{
           data[this.cell,col_accuracy] <- temp$clean_data$accuracy
           data[this.cell,col_rt] <- temp$clean_data$RT
           data2[this.cell,col_accuracy] <- temp$contaminated_data$accuracy
           data2[this.cell,col_rt] <- temp$contaminated_data$RT
+        }else{
+          data[this.cell,col_accuracy] <- temp$accuracy
+          data[this.cell,col_rt] <- temp$RT          
         }
   }
   # Convert to matrix and add column names
