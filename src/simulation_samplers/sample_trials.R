@@ -117,15 +117,11 @@ return(output)
 add_contaminant <- function(a,t, ddm_data, contamination_probability){
       # Step 1: Decide which trials will be contaminated
       n <- length(ddm_data$RT)
-      replace_trial <- rbinom(n, 1, contamination_probability)
-      contaminant_count <- sum(replace_trial)
-
-      # Make sure at least one trial is contaminated
-      if(contaminant_count==0){
-         replace_trial[sample(1:n,1)] <- 1
-         contaminant_count <- 1
-      }
-
+      # We fix the number of contaminant trials based on the contamination probability
+      contaminant_count <- n*contamination_probability
+      # The first few trials will be contaminated
+      replace_trial <- 1:contaminant_count      
+      # We determine what type of contaminant each trial is
       contaminant_type <- rbinom(contaminant_count, 1, 0.5) # 0 = participant guessed, 1= RT outlier
       
       outlier_contaminants <- sum(contaminant_type)
@@ -133,15 +129,15 @@ add_contaminant <- function(a,t, ddm_data, contamination_probability){
 
       # Step 3: Replace RTs with outliers
       if(outlier_contaminants>0){
-        RT_replace <- ddm_data$RT[as.logical(replace_trial)][as.logical(contaminant_type)]         
-        ddm_data$RT[as.logical(replace_trial)][as.logical(contaminant_type)]  <- RT_replace + runif(outlier_contaminants, 3, 6)        
+        RT_replace <- ddm_data$RT[replace_trial][as.logical(contaminant_type)]         
+        ddm_data$RT[replace_trial][as.logical(contaminant_type)]  <- RT_replace + runif(outlier_contaminants, 2, 3)
       }
 
       # Step 4: Replace accuracy with guess data
       if(guess_contaminants>0){
-        tmp <- sample_trials(a,v=0,t,guess_contaminants)
-        ddm_data$accuracy[as.logical(replace_trial)][!as.logical(contaminant_type)]  <- tmp$accuracy
-        ddm_data$RT[as.logical(replace_trial)][!as.logical(contaminant_type)]  <- tmp$RT + t
+        tmp_x <- sample_trials(a,v=0,t,guess_contaminants)
+        ddm_data$accuracy[replace_trial][!as.logical(contaminant_type)]  <- tmp_x$accuracy
+        ddm_data$RT[replace_trial][!as.logical(contaminant_type)]  <- tmp_x$RT + t
       }
 
       return(ddm_data)
