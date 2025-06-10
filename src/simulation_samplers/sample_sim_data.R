@@ -76,15 +76,16 @@ sample_data <- function(nPart, N, params, separate_datasets = FALSE,
       # First generate the dataset once
       temp <- get_DDM_data(a = params$bound, v = params$drift, t = params$nondt, n = N,
                            contamination_probability = contamination_probability,
-                           separate_datasets = separate_datasets)
-      accuracy <- temp$accuracy
+                           separate_datasets = separate_datasets)                           
+
+      accuracy <- get_accuracy(temp, separate_datasets)
 
       # If prevent_zero_accuracy is TRUE and we got all zeros, keep trying
       while(sum(accuracy)==0 && prevent_zero_accuracy){
         temp <- get_DDM_data(a = params$bound, v = params$drift, t = params$nondt, n = N,
                             contamination_probability = contamination_probability,
                             separate_datasets = separate_datasets)
-        accuracy <- temp$accuracy
+        accuracy <- get_accuracy(temp, separate_datasets)
       }
 
 return(temp)
@@ -122,6 +123,11 @@ get_simulation_data <- function(nPart, nTrials = NA, parameter_set, nTrialsPerCo
             adjusted_parameter_set <- design$adjusted_parameter_set
             cell_index <- design$cell_index
             n_par_sets <- length(adjusted_parameter_set$bound)
+  
+  colnames(data) <- colNames
+  if(separate_datasets){
+    data2 <- data
+  }
 
   for(i in 1:n_par_sets){
         # Identify rows for current participant
@@ -135,14 +141,23 @@ get_simulation_data <- function(nPart, nTrials = NA, parameter_set, nTrialsPerCo
         temp <- sample_data(nPart = nPart, N = N, params = params, separate_datasets = separate_datasets,
                             contamination_probability = contamination_probability, 
                             prevent_zero_accuracy = prevent_zero_accuracy)
-        data[this.cell,col_accuracy] <- temp$accuracy
-        data[this.cell,col_rt] <- temp$RT
+        if(separate_datasets){
+          data[this.cell,col_accuracy] <- temp$accuracy
+          data[this.cell,col_rt] <- temp$RT          
+        }else{
+          data[this.cell,col_accuracy] <- temp$clean_data$accuracy
+          data[this.cell,col_rt] <- temp$clean_data$RT
+          data2[this.cell,col_accuracy] <- temp$contaminated_data$accuracy
+          data2[this.cell,col_rt] <- temp$contaminated_data$RT
+        }
   }
   # Convert to matrix and add column names
-  data <- as.matrix(data)
-  colnames(data) <- colNames
-  
-return(data)
+  output <- as.matrix(data)
+  if(separate_datasets){
+    data2 <- as.matrix(data2)
+    output <- list(clean_data = output, contaminated_data = data2)
+  }
+return(output)
 }
 
 
@@ -186,4 +201,14 @@ sample_summaryStats <- function(parameter_set, n_trials){
   return(data.frame("A" = ObservedAccuracyTotal, 
                     "Mrt" = ObservedMean, 
                     "Vrt" = ObservedVariance))
+}
+
+# Helper function
+get_accuracy <- function(data, separate_datasets){
+  if(separate_datasets){
+    accuracy <- c(data$clean_data$accuracy, data$contaminated_data$accuracy)
+  }else{
+    accuracy <- data$accuracy
+  }
+  return(accuracy)
 }
