@@ -6,8 +6,7 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 JAGS_passData <- function(modelType=NA){
   # Define the basic data variables needed for all model types
-  passData <- list("nParticipants", "nTrialsPerPerson",
-                   "meanRT", "varRT", "correct")
+  passData <- list("nParticipants", "nTrialsPerPerson","meanRT", "varRT","correct")
   
   # For models that include predictors (i.e., metaregression, t-test),
   # we also need to pass the predictor vector X
