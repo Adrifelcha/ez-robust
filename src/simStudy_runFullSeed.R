@@ -19,8 +19,9 @@
 #   * reps: Count of repeated simulations due to errors or poor convergence
 ###################################################################################
 
-SimStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy=TRUE,
-                                 redo_if_bad_rhat=FALSE, rhat_cutoff=NA, Show=FALSE){
+simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy=TRUE,
+                                 redo_if_bad_rhat=FALSE, rhat_cutoff=NA, Show=FALSE,
+                                 include_EZ_Robust=FALSE){
   # Start timing the entire simulation study
   grand_tic <- clock::date_now(zone="UTC")  
   # Set master random seed for reproducibility
@@ -54,6 +55,8 @@ SimStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
   if(settings$contaminant_prob==0){
         settings$separate_datasets <- FALSE
   }
+
+  EZ <- ifelse(include_EZ_Robust, 2, 1)
   
   # Create a marker file to indicate simulation has started
   write('Seed has been initiated', paste(settings$output.folder, "seed-", seed, "_start.txt", sep=""))
@@ -64,7 +67,7 @@ SimStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
   out_NoEffect <- list()  # Will store results from models with no effect (Beta fixed to 0)
   out_Effect <- list()  # Will store results from models with effect (Beta fixed to anything other than 0)
   nTPC <- NULL        # Number of trials per condition - Default to NULL for between-subjects designs
-  cell <- 0           # Counter for current cell
+  cell <- 1           # Counter for current cell
   redo_JAGS <- 0      # Counter for JAGS errors
   redo_Rhat <- 0      # Counter for R-hat convergence issues
  
