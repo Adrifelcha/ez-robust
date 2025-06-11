@@ -66,16 +66,27 @@ simStudy_runJAGS <- function(summaryData, nTrials, X, jagsData, jagsParameters, 
       results <- list()
       for(m in model){
         if(separate_datasets){
-          results[[m]] <- list("contaminated" = HDDM_runJAGS(EZ_stats_contaminated, nTrials, X, jagsData[[m]], jagsParameters, jagsInits,
-                                                             n.chains=n.chains, n.burnin=n.burnin, n.iter=n.iter, n.thin=n.thin, 
-                                                             modelFile=modelFile[m], Show = TRUE, track_allParameters = track_allParameters),
-                               "clean" = HDDM_runJAGS(EZ_stats_clean, nTrials, X, jagsData[[m]], jagsParameters, jagsInits,
-                                                      n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, modelFile=modelFile[m], Show = TRUE,
-                                                      track_allParameters = track_allParameters))
+          results[[m]] <- list("contaminated" = runJAGS(EZ_stats = EZ_stats_contaminated, 
+                                                        jagsData = jagsData[[m]], 
+                                                        jagsParameters = jagsParameters, 
+                                                        jagsInits = jagsInits,
+                                                        n.chains = n.chains, n.burnin = n.burnin, 
+                                                        n.iter = n.iter, n.thin = n.thin, 
+                                                        modelFile=modelFile[m], Show = TRUE, 
+                                                        track_allParameters = track_allParameters),
+                               "clean" = runJAGS(EZ_stats = EZ_stats_clean, jagsData = jagsData[[m]], 
+                                                        jagsParameters = jagsParameters, 
+                                                        jagsInits = jagsInits,
+                                                        n.chains = n.chains, n.burnin = n.burnin, 
+                                                        n.iter = n.iter, n.thin = n.thin, 
+                                                        modelFile=modelFile[m], Show = TRUE, 
+                                                        track_allParameters = track_allParameters))
         }else{
-          results[[m]] <- HDDM_runJAGS(EZ_stats, nTrials, X, jagsData, jagsParameters, jagsInits,
-                                       n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, modelFile=modelFile[m], Show = TRUE,
-                                       track_allParameters = track_allParameters)
+          results[[m]] <- runJAGS(EZ_stats = EZ_stats, jagsData = jagsData, 
+                                  jagsParameters = jagsParameters, jagsInits = jagsInits,
+                                  n.chains = n.chains, n.burnin = n.burnin, n.iter = n.iter, 
+                                  n.thin = n.thin, modelFile = modelFile[m], Show = TRUE,
+                                  track_allParameters = track_allParameters)
         }
       }
 return(results)
@@ -84,9 +95,9 @@ return(results)
 
 
 
-HDDM_runJAGS <- function(EZ_stats, nTrials, X, jagsData, jagsParameters, jagsInits, 
-                         n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, modelFile=NA, Show = TRUE,
-                         track_allParameters = track_allParameters){
+runJAGS <- function(EZ_stats, jagsData, jagsParameters, jagsInits, 
+                         n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, 
+                         modelFile=NA, Show = TRUE, track_allParameters = track_allParameters){
   
   # If modelFile is not provided, use the default model file
   if(is.na(modelFile)){
