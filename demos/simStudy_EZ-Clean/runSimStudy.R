@@ -28,6 +28,7 @@ settings <- list("output.folder" = file.path(output_dir, "/"),
                  "beta_levels" = c(0, 0.1, 0.2, 0.4, 0.8),
                  "separate_datasets" = TRUE,
                  "contaminant_prob" = 0.05,
+                 "include_EZ_Robust" = TRUE,
                  "nDatasets" = 1000,
                  "modelType" = "ttest",
                  "withinSubject" = TRUE,
@@ -35,13 +36,15 @@ settings <- list("output.folder" = file.path(output_dir, "/"),
                  "n.burnin" = 500,
                  "n.iter" = 4000,
                  "n.thin" = 1,
-                 "jagsParameters" = c("bound_mean", "drift_mean", "nondt_mean", "betaweight"),                 
-                 "modelFile" = here("output", "BUGS-models", "EZHBDDM-withinSubject.bug"))
+                 "jagsParameters" = c("bound_mean", "drift_mean", "nondt_mean", "betaweight"),
+                 "modelFile" = rbind(here("output", "BUGS-models", "EZHBDDM-withinSubject.bug"),
+                                     here("output", "BUGS-models", "EZHBDDM-withinSubject-Robust.bug")))
 
 # Implied number of cells
 settings <- c(settings,
               list("nCells" = prod(length(settings$participant_levels),length(settings$trial_levels), length(settings$beta_levels)),
-                   "jagsData" = list(JAGS_passData(settings$modelType))))
+                   "jagsData" = list(list("EZ" = JAGS_passData(settings$modelType, withinSubject = settings$withinSubject),
+                                          "EZRobust" = JAGS_passData(settings$modelType, EZRobust = settings$include_EZ_Robust, withinSubject = settings$withinSubject)))))
 
 # Prepare JAGS objects
 jagsInits <- list()
@@ -53,9 +56,12 @@ for(i in settings$participant_levels){
 # Add JAGS objects to settings
 settings <- c(settings, list("jagsInits" = jagsInits))
 # Change names so they can be called more easily
-names(settings$jagsParameters) <- settings$design_levels
-names(settings$jagsData) <- settings$design_levels
+names(settings$jagsParameters) <- settings$modelType
+names(settings$jagsData) <- settings$modelType
 names(settings$jagsInits) <- settings$participant_levels
+rownames(settings$modelFile) <- c("EZ", "EZRobust")
+colnames(settings$modelFile) <- settings$modelType
+
 
 ##########################################################
 # Write JAGS models
@@ -80,10 +86,12 @@ custom_truncation_list <- list(
         "bound_sdev" = c(0.01, ""), "nondt_sdev" = c(0.01, ""), "drift_sdev" = c(0.01, ""),
         "drift" = c("", ""), "bound" = c(0.0001, ""), "nondt" = c(0.0001, ""), "betaweight" = c("-3", "3"))
 
-
-JAGS_writeModel(priors = settings$priors[[settings$modelType]], modelType = settings$modelType, 
-                withinSubject = settings$withinSubject, modelFile = settings$modelFile,
-                custom_truncation_list = custom_truncation_list)    
+for(EZR in c(FALSE, TRUE)){
+        modelFile <- settings$modelFile[EZR+1]
+        JAGS_writeModel(priors = settings$priors[[settings$modelType]], modelType = settings$modelType, 
+                        withinSubject = settings$withinSubject, EZRobust = EZR, modelFile = modelFile,
+                        custom_truncation_list = custom_truncation_list)    
+}
 
 settings <- c(settings, list("true_sdevs" = list("bound_sdev" = 0.5, "nondt_sdev" = 0.1, "drift_sdev" = 0.75),
                              "true_means" = list("bound_mean" = c(2, 4), "nondt_mean" = c(0.2, 0.4), "drift_mean" = c(-3, 3))))
@@ -102,11 +110,11 @@ resultado <- foreach(seed = 201:210,
                     Z <- simStudy_runFullSeed(seed = seed,
                                               settings = settings,
                                               forceRun = forceRun,
+                                              include_EZ_Robust = settings$include_EZ_Robust,
                                               redo_if_bad_rhat = TRUE,
                                               rhat_cutoff = 1.05,
                                               prevent_zero_accuracy = FALSE,
-                                              Show = TRUE,
-                                              include_EZ_Robust = TRUE)
+                                              Show = TRUE)
                   }
 stopCluster(cl = my.cluster)
 
