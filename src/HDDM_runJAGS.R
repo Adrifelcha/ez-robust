@@ -185,7 +185,7 @@ getEZ_stats <- function(sumData, nTrials, withinSubject = FALSE){
                "medianRT" = sumData[,"medianRT"],    # Median response time
                "iqrVarRT" = sumData[,"iqrVarRT"],    # Interquartile range of response times
                "nTrialsPerCondition" = nTrials,         # Number of trials per participant
-               "nParticipants" = nrow(sumData),
+               "nParticipants" = length(unique(sumData[,"sub"])),
                "P" = sumData[,"sub"],     # Number of participants
                "X" = if(withinSubject) sumData[,"cond"] else NULL))
 }
