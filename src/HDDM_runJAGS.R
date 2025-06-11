@@ -40,7 +40,7 @@ simStudy_runJAGS <- function(summaryData, nTrials, X, jagsData, jagsParameters, 
                          track_allParameters = track_allParameters, separate_datasets = FALSE,
                          include_EZ_Robust = FALSE){  
       # If modelFile is not provided, use the default model file
-      if(is.na(modelFile)){
+      if(length(modelFile) == 1 && is.na(modelFile)){
         modelFile <- here("output", "BUGS-models", "EZHBDDM.bug")
       }
 
@@ -98,6 +98,7 @@ HDDM_runJAGS <- function(EZ_stats, nTrials, X, jagsData, jagsParameters, jagsIni
   iqrVarRT <- EZ_stats$iqrVarRT
   nTrialsPerCondition <- EZ_stats$nTrialsPerCondition
   nParticipants    <- EZ_stats$nParticipants
+  P <- EZ_stats$P
   
   # Step 2: Run JAGS to sample from the posterior distribution
   # Record start time for performance tracking

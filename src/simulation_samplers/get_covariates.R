@@ -10,9 +10,11 @@ get_X_covariate <- function(p, modelType, withinSubject = FALSE){
         colnames(X) <- c("hierarchical")
     }
     if(modelType == "ttest"){
-        X <- ifelse(withinSubject,
-                    cbind(rep(c(1,0),p)),  # Within-subject design
-                    cbind((0:(p-1))%%2))   # Between-subject design
+        X <- if(withinSubject) {
+            cbind(rep(c(1,0),p))  # Within-subject design
+        } else {
+            cbind((0:(p-1))%%2)   # Between-subject design
+        }
         colnames(X) <- c("ttest")
     }
     if(modelType == "metaregression"){

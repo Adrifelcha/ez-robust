@@ -55,8 +55,6 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
   if(settings$contaminant_prob==0){
         settings$separate_datasets <- FALSE
   }
-
-  EZ <- ifelse(include_EZ_Robust, 2, 1)
   
   # Create a marker file to indicate simulation has started
   write('Seed has been initiated', paste(settings$output.folder, "seed-", seed, "_start.txt", sep=""))
@@ -77,7 +75,7 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
       # Loop through all participant count levels
       for(p in settings$participant_levels){
           # Create participant-specific covariates/predictors
-          X <- get_X_covariate(p, modelType = d)
+          X <- get_X_covariate(p, modelType = d, withinSubject = settings$withinSubject)
           
           # Loop through all trial count levels
           for(t in settings$trial_levels){
