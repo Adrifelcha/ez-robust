@@ -144,9 +144,6 @@ model_summaryStats <- function(withinSubject = FALSE, EZRobust = FALSE){
   return(summStats)
 }
 
-content.end <- c(ForwardEquations, summStats)
-    writeLines(content.end)
-
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 # Function to write the EZ equations
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
