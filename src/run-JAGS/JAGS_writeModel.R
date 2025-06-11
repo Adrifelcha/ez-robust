@@ -121,48 +121,66 @@ model_individual_parameters <- function(t = NULL, modelType = "hierarchical", wi
   }
 }
 
+model_summaryStats <- function(withinSubject = FALSE, EZRobust = FALSE){
+  
+  I <- ifelse(withinSubject==TRUE, "k", "p")  
+
+  if(!EZRobust){
+    summStats <- paste0("\n              # Loss functions using MRT, PRT, and Pc",
+                  "\n                 correct[", I, "] ~ dbin(Pc[", I, "], nTrialsPerCondition)",
+                  "\n                 meanRT[", I, "]  ~ dnorm(MRT[", I, "], PRT[", I, "] * nTrialsPerCondition)",
+                  "\n                 varRT[", I, "]   ~ dnorm(1/PRT[", I, "], 0.5*(nTrialsPerCondition-1) * PRT[", I, "] * PRT[", I, "])",
+                  "\n              }",
+                  "\n }")
+  }else{
+    summStats <- paste0("\n              # Loss functions using MRT, PRT, and Pc",
+                  "\n                 correct[", I, "] ~ dbin(Pc[", I, "], nTrialsPerCondition)",
+                  "\n                 medianRT[", I, "]  ~ dnorm(MRT[", I, "], PRT[", I, "] * nTrialsPerCondition)",
+                  "\n                 iqrVarRT[", I, "]   ~ dnorm(1/PRT[", I, "], 0.5*(nTrialsPerCondition-1) * PRT[", I, "] * PRT[", I, "])",
+                  "\n              }",
+                  "\n }")
+  }
+
+  return(summStats)
+}
+
+content.end <- c(ForwardEquations, summStats)
+    writeLines(content.end)
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 # Function to write the EZ equations
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
-model_EZequations <- function(withinSubject = FALSE){
+model_EZequations <- function(withinSubject = FALSE, EZRobust = FALSE){
   if(withinSubject==TRUE){
-    content.end <- "
+    ForwardEquations <- "
               # Forward equations from EZ Diffusion
               for (k in 1:length(meanRT)) {
                   ey[k]  = exp(-bound[P[k]] * drift[P[k],(X[k])+1])
                   Pc[k]  = 1 / (1 + ey[k])
                   PRT[k] = 2 * pow(drift[P[k],(X[k]+1)], 3) / bound[P[k]] * pow(ey[k] + 1, 2) / (2 * -bound[P[k]] * drift[P[k],(X[k]+1)] * ey[k] - ey[k]*ey[k] + 1)
                   MDT[k] = (bound[P[k]] / (2 * drift[P[k],(X[k]+1)])) * (1 - ey[k]) / (1 + ey[k])
-                  MRT[k] = MDT[k] + nondt[P[k]]
+                  MRT[k] = MDT[k] + nondt[P[k]]"
 
-                  # Loss functions using MRT, PRT, and Pc
-                  correct[k] ~ dbin(Pc[k], nTrialsPerCondition)
-                  meanRT[k]  ~ dnorm(MRT[k], PRT[k] * nTrialsPerCondition)
-                  varRT[k]   ~ dnorm(1/PRT[k], 0.5*(nTrialsPerCondition-1) * PRT[k] * PRT[k])
-              }
-      }"
+    summStats <- model_summaryStats(withinSubject = withinSubject, EZRobust = EZRobust)    
   } else {
-     content.end <- "
+    ForwardEquations <- "
                   # Forward equations from EZ Diffusion
                   ey[p]  = exp(-bound[p] * drift[p])
                   Pc[p]  = 1 / (1 + ey[p])
                   PRT[p] = 2 * pow(drift[p], 3) / bound[p] * pow(ey[p] + 1, 2) / (2 * -bound[p] * drift[p] * ey[p] - ey[p]*ey[p] + 1)
                   MDT[p] = (bound[p] / (2 * drift[p])) * (1 - ey[p]) / (1 + ey[p])
-                  MRT[p] = MDT[p] + nondt[p]
+                  MRT[p] = MDT[p] + nondt[p]"
 
-                  # Loss functions using MRT, PRT, and Pc
-                  correct[p] ~ dbin(Pc[p], nTrialsPerPerson)
-                  meanRT[p]  ~ dnorm(MRT[p], PRT[p] * nTrialsPerPerson)
-                  varRT[p]   ~ dnorm(1/PRT[p], 0.5*(nTrialsPerPerson-1) * PRT[p] * PRT[p])
-              }
-      }"
+    summStats <- model_summaryStats(withinSubject = withinSubject, EZRobust = EZRobust)
   }
+  content.end <- c(ForwardEquations, summStats)
+return(content.end)
 }
 
 ######################################################################################
 # Main function to write the .BUGS model file
 ######################################################################################
-JAGS_writeModel <- function(priors, modelType, withinSubject = FALSE, modelFile=NA, custom_truncation_list = NULL){
+JAGS_writeModel <- function(priors, modelType, withinSubject = FALSE, EZRobust = FALSE, modelFile=NA, custom_truncation_list = NULL){
 
   # If no custom truncation list is provided, use these default values
   if(is.null(custom_truncation_list)){
@@ -178,7 +196,7 @@ JAGS_writeModel <- function(priors, modelType, withinSubject = FALSE, modelFile=
   hierarchical_means <- model_hierarchical_means(priors, t = custom_truncation_list)
   hierarchical_sdevs <- model_hierarchical_sdevs(priors, t = custom_truncation_list)
   individual_parameters <- model_individual_parameters(t = custom_truncation_list, modelType, withinSubject)
-  EZequations <- model_EZequations(withinSubject)
+  EZequations <- model_EZequations(withinSubject, EZRobust)
 
   start <- c(opening, hierarchical_means, hierarchical_sdevs)
   if((modelType != "hierarchical")||(withinSubject==TRUE)){
