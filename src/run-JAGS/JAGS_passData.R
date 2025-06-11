@@ -4,9 +4,15 @@
 # Inputs:
 # - modelType: Type of model being used (e.g., "hierarchical", or "ttest")
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
-JAGS_passData <- function(modelType=NA){
+JAGS_passData <- function(modelType=NA, EZRobust=FALSE){
   # Define the basic data variables needed for all model types
-  passData <- list("nParticipants", "nTrialsPerPerson","meanRT", "varRT","correct")
+  passData <- list("nParticipants", "nTrialsPerPerson", "correct")
+
+  if(EZRobust){
+    passData <- c(passData, "medianRT", "iqrVarRT")
+  }else{
+    passData <- c(passData, "meanRT", "varRT")
+  }
   
   # For models that include predictors (i.e., metaregression, t-test),
   # we also need to pass the predictor vector X
