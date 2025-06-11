@@ -151,7 +151,7 @@ model_EZequations <- function(withinSubject = FALSE, EZRobust = FALSE){
   if(withinSubject==TRUE){
     ForwardEquations <- "
               # Forward equations from EZ Diffusion
-              for (k in 1:length(meanRT)) {
+              for (k in 1:length(correct)) {
                   ey[k]  = exp(-bound[P[k]] * drift[P[k],(X[k])+1])
                   Pc[k]  = 1 / (1 + ey[k])
                   PRT[k] = 2 * pow(drift[P[k],(X[k]+1)], 3) / bound[P[k]] * pow(ey[k] + 1, 2) / (2 * -bound[P[k]] * drift[P[k],(X[k]+1)] * ey[k] - ey[k]*ey[k] + 1)
