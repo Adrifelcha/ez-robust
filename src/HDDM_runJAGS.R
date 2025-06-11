@@ -34,7 +34,53 @@
 #   * n.iter: Number of iterations used
 ###################################################################################
 
-HDDM_runJAGS <- function(summaryData, nTrials, X, jagsData, jagsParameters, jagsInits, 
+###################################################################################
+simStudy_runJAGS <- function(summaryData, nTrials, X, jagsData, jagsParameters, jagsInits, 
+                         n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, modelFile=NA, Show = TRUE,
+                         track_allParameters = track_allParameters, separate_datasets = FALSE,
+                         include_EZ_Robust = FALSE){  
+      # If modelFile is not provided, use the default model file
+      if(is.na(modelFile)){
+        modelFile <- here("output", "BUGS-models", "EZHBDDM.bug")
+      }
+
+      # Step 1: Extract key summary statistics from the data
+      # These are the sufficient statistics for the EZ-DDM
+      if(separate_datasets){
+          EZ_stats_contaminated <- getEZ_stats(summaryData$contaminated_summary, nTrials)
+          EZ_stats_clean <- getEZ_stats(summaryData$clean_summary, nTrials)
+          
+      }else{
+          EZ_stats <- getEZ_stats(summaryData, nTrials)
+      }
+
+      model  <- "EZ"
+      if(include_EZ_Robust){
+         model <- c(model, "EZRobust")
+      }
+
+      results <- list()
+      for(m in model){
+        if(separate_datasets){
+          results[[m]] <- list("contaminated" = HDDM_runJAGS(EZ_stats_contaminated, nTrials, X, jagsData[[m]], jagsParameters, jagsInits,
+                                                        n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, modelFile=modelFile[m], Show = TRUE,
+                                                        track_allParameters = track_allParameters),
+                               "clean" = HDDM_runJAGS(EZ_stats_clean, nTrials, X, jagsData[[m]], jagsParameters, jagsInits,
+                                                      n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, modelFile=modelFile[m], Show = TRUE,
+                                                      track_allParameters = track_allParameters))
+        }else{
+          results[[m]] <- HDDM_runJAGS(EZ_stats, nTrials, X, jagsData, jagsParameters, jagsInits,
+                                       n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, modelFile=modelFile[m], Show = TRUE,
+                                       track_allParameters = track_allParameters)
+        }
+      }
+return(results)
+}
+
+
+
+
+HDDM_runJAGS <- function(EZ_stats, nTrials, X, jagsData, jagsParameters, jagsInits, 
                          n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, modelFile=NA, Show = TRUE,
                          track_allParameters = track_allParameters){
   
@@ -45,11 +91,13 @@ HDDM_runJAGS <- function(summaryData, nTrials, X, jagsData, jagsParameters, jags
 
   # Step 1: Extract key summary statistics from the data
   # These are the sufficient statistics for the EZ-DDM
-  correct <- summaryData[,"sum_correct"]  # Number of correct responses per participant
-  varRT   <- summaryData[,"varRT"]        # Variance of response times
-  meanRT  <- summaryData[,"meanRT"]       # Mean response time
-  nTrialsPerPerson <- nTrials             # Number of trials per participant
-  nParticipants    <- nrow(summaryData)   # Number of participants
+  correct <- EZ_stats$correct
+  varRT   <- EZ_stats$varRT
+  meanRT  <- EZ_stats$meanRT
+  medianRT <- EZ_stats$medianRT
+  iqrVarRT <- EZ_stats$iqrVarRT
+  nTrialsPerCondition <- EZ_stats$nTrialsPerCondition
+  nParticipants    <- EZ_stats$nParticipants
   
   # Step 2: Run JAGS to sample from the posterior distribution
   # Record start time for performance tracking
@@ -122,3 +170,16 @@ HDDM_runJAGS <- function(summaryData, nTrials, X, jagsData, jagsParameters, jags
               "clock" = clock,               # Computation time
               "n.iter" = n.iter))            # Number of iterations
 }
+
+# Helper function
+getEZ_stats <- function(sumData, nTrials){
+   return(list("correct" = sumData[,"sum_correct"],  # Number of correct responses per participant
+               "varRT" = sumData[,"varRT"],          # Variance of response times
+               "meanRT" = sumData[,"meanRT"],        # Mean response time
+               "medianRT" = sumData[,"medianRT"],    # Median response time
+               "iqrVarRT" = sumData[,"iqrVarRT"],    # Interquartile range of response times
+               "nTrialsPerCondition" = nTrials,         # Number of trials per participant
+               "nParticipants" = nrow(sumData),
+               "P" = sumData[,"sub"]))     # Number of participants
+}
+
