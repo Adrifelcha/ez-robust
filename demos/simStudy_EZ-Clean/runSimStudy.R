@@ -36,7 +36,7 @@ settings <- list("output.folder" = file.path(output_dir, "/"),
                  "n.burnin" = 500,
                  "n.iter" = 4000,
                  "n.thin" = 1,
-                 "jagsParameters" = c("bound_mean", "drift_mean", "nondt_mean", "betaweight"),
+                 "jagsParameters" = rbind("bound_mean", "drift_mean", "nondt_mean", "betaweight"),
                  "modelFile" = rbind(here("output", "BUGS-models", "EZHBDDM-withinSubject.bug"),
                                      here("output", "BUGS-models", "EZHBDDM-withinSubject-Robust.bug")))
 
@@ -56,7 +56,7 @@ for(i in settings$participant_levels){
 # Add JAGS objects to settings
 settings <- c(settings, list("jagsInits" = jagsInits))
 # Change names so they can be called more easily
-names(settings$jagsParameters) <- settings$modelType
+colnames(settings$jagsParameters) <- settings$modelType
 names(settings$jagsData) <- settings$modelType
 names(settings$jagsInits) <- settings$participant_levels
 rownames(settings$modelFile) <- c("EZ", "EZRobust")
