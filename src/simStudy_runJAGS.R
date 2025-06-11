@@ -1,39 +1,17 @@
 ###################################################################################
 # MODULAR FUNCTION CODING AHEAD:
 #
-# HDDM_runJAGS is a higher-level function that manages the MCMC sampling process
+# This is a higher-level function that manages the MCMC sampling process
 # using JAGS to estimate hierarchical drift diffusion model parameters.
 ###################################################################################
-# This function handles the complete JAGS workflow for HDDM parameter estimation:
-# 1. Prepares the data for JAGS
-# 2. Runs the MCMC sampling process
-# 3. Extracts and processes the posterior samples
-# 4. Calculates summary statistics and diagnostic metrics
-#
-# Inputs:
-# - summaryData: Data frame containing EZ-DDM summary statistics per cell design
-# - nTrials: Number of trials per participant
-# - X: Predictor vector for models with a regression structure
-# - jagsData: List of data to be passed to JAGS
-# - jagsParameters: Vector of parameter names to be monitored
-# - jagsInits: List of initial values for MCMC chains
-# - n.chains: Number of MCMC chains to run (default: 4)
-# - n.burnin: Number of burn-in iterations (default: 250)
-# - n.iter: Total number of iterations including burn-in (default: 2000)
-# - n.thin: Thinning interval for samples (default: 1)
-# - modelFile: Path to the JAGS model file (default: "./EZHBDDM.bug")
-# - Show: Whether to display diagnostic plots (default: TRUE)
-# - track_allParameters: Whether to track all or only hierarchical parameters
-#
-# Returns a list containing:
-#   * estimates: Posterior means for all monitored parameters
-#   * sd: Posterior standard deviations
-#   * credInterval: 95% credible intervals
-#   * rhats: Convergence diagnostics
-#   * clock: Computation time in seconds
-#   * n.iter: Number of iterations used
+# Contains three functions:
+# 1. simStudy_runJAGS: Main function that orchestrates the MCMC sampling process
+# 2. runJAGS: Function that runs the MCMC sampling process locally (for a gvien dataset and modelFile)
+# 3. getEZ_stats: Function that extracts the sufficient statistics from the data
 ###################################################################################
 
+###################################################################################
+# Main function that orchestrates the MCMC sampling process
 ###################################################################################
 simStudy_runJAGS <- function(summaryData, nTrials, X, jagsData, jagsParameters, jagsInits, 
                          n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, modelFile=NA, Show = TRUE,
@@ -93,8 +71,9 @@ return(results)
 }
 
 
-
-
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Local function that runs the MCMC sampling process
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 runJAGS <- function(EZ_stats, jagsData, jagsParameters, jagsInits, 
                          n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, 
                          modelFile=NA, Show = TRUE, track_allParameters = track_allParameters){
@@ -188,7 +167,9 @@ runJAGS <- function(EZ_stats, jagsData, jagsParameters, jagsInits,
               "n.iter" = n.iter))            # Number of iterations
 }
 
-# Helper function
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Helper function that extracts the sufficient statistics from the data
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 getEZ_stats <- function(sumData, nTrials, withinSubject = FALSE){
    return(list("correct" = sumData[,"sum_correct"],  # Number of correct responses per participant
                "varRT" = sumData[,"varRT"],          # Variance of response times
