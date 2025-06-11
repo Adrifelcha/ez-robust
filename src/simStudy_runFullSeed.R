@@ -121,20 +121,22 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                                 
                                 # Attempt to run JAGS with error handling
                                 start_time <- Sys.time()
-                                z <- try(runJags <- HDDM_runJAGS(
-                                    summaryData = design$sumData, 
-                                    nTrials = t, 
-                                    X = X[,d], 
-                                    jagsData = settings$jagsData[[d]], 
-                                    jagsParameters = settings$jagsParameters[[d]], 
-                                    jagsInits = settings$jagsInits[[as.character(p)]], 
-                                    n.chains = settings$n.chains, 
-                                    n.burnin = nBurnin, 
-                                    n.iter = nIter, 
-                                    n.thin = nThin, 
-                                    modelFile = settings$modelFile[d,c], 
-                                    Show = Show, 
-                                    track_allParameters = FALSE))
+                                z <- try(runJags <- simStudy_runJAGS(
+                                                        summaryData = design$sumData, 
+                                                        nTrials = t, 
+                                                        X = X, 
+                                                        jagsData = settings$jagsData[[d]], 
+                                                        jagsParameters = settings$jagsParameters[[d]], 
+                                                        jagsInits = settings$jagsInits[[as.character(p)]], 
+                                                        n.chains = settings$n.chains, 
+                                                        n.burnin = nBurnin, 
+                                                        n.iter = nIter, 
+                                                        n.thin = nThin, 
+                                                        modelFile = settings$modelFile[,d], 
+                                                        Show = Show, 
+                                                        track_allParameters = FALSE,
+                                                        separate_datasets = settings$separate_datasets,
+                                                        include_EZ_Robust = settings$include_EZ_Robust))
                                 end_time <- Sys.time()
                                 if(Show){
                                     cat("Time taken: ", difftime(end_time, start_time, units = "secs"), " seconds\n")
