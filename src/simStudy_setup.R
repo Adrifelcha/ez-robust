@@ -38,7 +38,7 @@ simStudy_setup <- function(nPart, nTrials, nTrialsPerCondition=NULL, true_sdevs,
                                   prevent_zero_accuracy = prevent_zero_accuracy)
 
     # Step 3: Calculate EZ summary statistics from the raw data
-    summData = get_summaryStats(data = rawData) 
+    summData = get_summaryStats(data = rawData, separate_datasets = separate_datasets) 
     
     # Return all components needed for subsequent analysis
     return(list("parameter_set" = parameter_set,
