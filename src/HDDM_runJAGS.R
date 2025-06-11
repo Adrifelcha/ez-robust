@@ -47,11 +47,15 @@ simStudy_runJAGS <- function(summaryData, nTrials, X, jagsData, jagsParameters, 
       # Step 1: Extract key summary statistics from the data
       # These are the sufficient statistics for the EZ-DDM
       if(separate_datasets){
-          EZ_stats_contaminated <- getEZ_stats(summaryData$contaminated_summary, nTrials)
-          EZ_stats_clean <- getEZ_stats(summaryData$clean_summary, nTrials)
+          EZ_stats_contaminated <- getEZ_stats(sumData = summaryData$contaminated_summary, 
+                                               nTrials = nTrials, 
+                                               withinSubject = withinSubject)
+          EZ_stats_clean <- getEZ_stats(sumData = summaryData$clean_summary, 
+                                        nTrials = nTrials, 
+                                        withinSubject = withinSubject)
           
       }else{
-          EZ_stats <- getEZ_stats(summaryData, nTrials)
+          EZ_stats <- getEZ_stats(sumData = summaryData, nTrials = nTrials, withinSubject = withinSubject)
       }
 
       model  <- "EZ"
@@ -63,8 +67,8 @@ simStudy_runJAGS <- function(summaryData, nTrials, X, jagsData, jagsParameters, 
       for(m in model){
         if(separate_datasets){
           results[[m]] <- list("contaminated" = HDDM_runJAGS(EZ_stats_contaminated, nTrials, X, jagsData[[m]], jagsParameters, jagsInits,
-                                                        n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, modelFile=modelFile[m], Show = TRUE,
-                                                        track_allParameters = track_allParameters),
+                                                             n.chains=n.chains, n.burnin=n.burnin, n.iter=n.iter, n.thin=n.thin, 
+                                                             modelFile=modelFile[m], Show = TRUE, track_allParameters = track_allParameters),
                                "clean" = HDDM_runJAGS(EZ_stats_clean, nTrials, X, jagsData[[m]], jagsParameters, jagsInits,
                                                       n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, modelFile=modelFile[m], Show = TRUE,
                                                       track_allParameters = track_allParameters))
@@ -99,6 +103,7 @@ HDDM_runJAGS <- function(EZ_stats, nTrials, X, jagsData, jagsParameters, jagsIni
   nTrialsPerCondition <- EZ_stats$nTrialsPerCondition
   nParticipants    <- EZ_stats$nParticipants
   P <- EZ_stats$P
+  X <- EZ_stats$X
   
   # Step 2: Run JAGS to sample from the posterior distribution
   # Record start time for performance tracking
@@ -173,7 +178,7 @@ HDDM_runJAGS <- function(EZ_stats, nTrials, X, jagsData, jagsParameters, jagsIni
 }
 
 # Helper function
-getEZ_stats <- function(sumData, nTrials){
+getEZ_stats <- function(sumData, nTrials, withinSubject = FALSE){
    return(list("correct" = sumData[,"sum_correct"],  # Number of correct responses per participant
                "varRT" = sumData[,"varRT"],          # Variance of response times
                "meanRT" = sumData[,"meanRT"],        # Mean response time
@@ -181,6 +186,7 @@ getEZ_stats <- function(sumData, nTrials){
                "iqrVarRT" = sumData[,"iqrVarRT"],    # Interquartile range of response times
                "nTrialsPerCondition" = nTrials,         # Number of trials per participant
                "nParticipants" = nrow(sumData),
-               "P" = sumData[,"sub"]))     # Number of participants
+               "P" = sumData[,"sub"],     # Number of participants
+               "X" = if(withinSubject) sumData[,"cond"] else NULL))
 }
 
