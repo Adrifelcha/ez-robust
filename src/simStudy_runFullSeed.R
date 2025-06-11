@@ -124,7 +124,7 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                                                         nTrials = t, 
                                                         X = X, 
                                                         jagsData = settings$jagsData[[d]], 
-                                                        jagsParameters = settings$jagsParameters[[d]], 
+                                                        jagsParameters = settings$jagsParameters[,d], 
                                                         jagsInits = settings$jagsInits[[as.character(p)]], 
                                                         n.chains = settings$n.chains, 
                                                         n.burnin = nBurnin, 
