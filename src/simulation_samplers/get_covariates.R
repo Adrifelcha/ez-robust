@@ -4,13 +4,15 @@
 # - p: number of participants
 # - modelType: type of model (hierarchical, ttest, metaregression)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
-get_X_covariate <- function(p, modelType){
+get_X_covariate <- function(p, modelType, withinSubject = FALSE){
     if(modelType == "hierarchical"){
         X <- cbind(rep(NA, p))
         colnames(X) <- c("hierarchical")
     }
     if(modelType == "ttest"){
-        X <- cbind((0:(p-1))%%2)
+        X <- ifelse(withinSubject,
+                    cbind(rep(c(1,0),p)),  # Within-subject design
+                    cbind((0:(p-1))%%2))   # Between-subject design
         colnames(X) <- c("ttest")
     }
     if(modelType == "metaregression"){
