@@ -9,7 +9,7 @@
 # - posterior_chains: A matrix where columns store MCMC chains and rows store iterations
 # - n.chains: Number of chains (only needed if posterior_chains has been reshaped into a vector)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
-get_Rhat <- function(posterior_chains, n.chains=NA) {
+getRhat <- function(posterior_chains, n.chains=NA) {
         # Ensure the input is a matrix
         # If a vector is provided, reshape it into a matrix with n.chains columns
         if (is.vector(posterior_chains)) {
