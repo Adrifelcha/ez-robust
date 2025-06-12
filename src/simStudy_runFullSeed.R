@@ -26,14 +26,14 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
   grand_tic <- clock::date_now(zone="UTC")  
   # Set master random seed for reproducibility
   set.seed(seed)
-  
+
   # Load required libraries with suppressed messages
   suppressMessages(library(R2jags))
   suppressMessages(library(rstan))
-  
+
   # Determine output file name to store seed-specific results
   fileName <- paste(settings$output.folder, "seed-", seed, ".RData", sep="")
-  
+
   # Check if this seed has already been run
   if(file.exists(fileName) & !forceRun){
      stop("Seed already run")
@@ -105,66 +105,23 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                         nThin <- settings$n.thin
 
                         # Keep generating and analyzing datasets until R-hat criteria are met
-                        while(rhat_not_verified){
-                                # Set seed for this attempt
-                                set.seed(this.seed)
+                        while(rhat_not_verified){                                
+                                # Run the cell
+                                runCell <- simStudy_runCell(p = p, t = t, nTPC = nTPC, d = d, X = X, b = b, 
+                                                         settings = settings, Show = Show, this.seed = this.seed,
+                                                         prevent_zero_accuracy = prevent_zero_accuracy)
                                 
-                                # Generate dataset with known parameters
-                                design <- simStudy_setup(nPart = p, nTrials = t, nTrialsPerCondition = nTPC, 
-                                                         true_sdevs = settings$true_sdevs, true_means = settings$true_means, 
-                                                         modelType = d, X = X, Show = Show, prevent_zero_accuracy = prevent_zero_accuracy,
-                                                         fixedBeta = b, withinSubject = settings$withinSubject,
-                                                         contamination_probability = settings$contaminant_prob,
-                                                         separate_datasets = settings$separate_datasets)
-                                
-                                # Attempt to run JAGS with error handling
-                                start_time <- Sys.time()
-                                z <- try(runJags <- simStudy_runJAGS(
-                                                        summaryData = design$sumData, 
-                                                        nTrials = t, 
-                                                        X = X, 
-                                                        jagsData = settings$jagsData[[d]], 
-                                                        jagsParameters = settings$jagsParameters[,d], 
-                                                        jagsInits = settings$jagsInits[[as.character(p)]], 
-                                                        n.chains = settings$n.chains, 
-                                                        n.burnin = nBurnin, 
-                                                        n.iter = nIter, 
-                                                        n.thin = nThin, 
-                                                        modelFile = settings$modelFile[,d], 
-                                                        Show = Show, 
-                                                        track_allParameters = FALSE,
-                                                        separate_datasets = settings$separate_datasets,
-                                                        include_EZ_Robust = settings$include_EZ_Robust))
-                                end_time <- Sys.time()
                                 if(Show){
-                                    cat("Time taken: ", difftime(end_time, start_time, units = "secs"), " seconds\n")
+                                    cat("Time taken: ", runCell$TimeTaken, " seconds\n")
                                 }
                                 # If JAGS error occurs, retry with different seed
-                                if(inherits(z, "try-error")){ 
+                                while(runCell$JAGS_error){ 
                                     cat("Repeating cell", cell, "of", settings$nCells, "due to a JAGS error \n")
                                     this.seed <- this.seed + 10000  # Change seed by 10,000
-                                    set.seed(this.seed)
                                     
-                                    # Generate new dataset and try again
-                                    design <- HDDM_setup(priors = settings$priors[[d]], nPart = p, nTrials = t, 
-                                                modelType = d, X = X[,d], criterion = c, 
-                                                fromPrior = settings$fromPrior, Show = FALSE, 
-                                                prevent_zero_accuracy = prevent_zero_accuracy,
-                                                generative_uniforms = settings$generative_uniforms)
-                                    z <- try(runJags <- HDDM_runJAGS(
-                                        summaryData = design$sumData, 
-                                        nTrials = t, 
-                                        X = X[,d], 
-                                        jagsData = settings$jagsData[[d]], 
-                                        jagsParameters = settings$jagsParameters[[d]], 
-                                        jagsInits = settings$jagsInits[[as.character(p)]], 
-                                        n.chains = settings$n.chains, 
-                                        n.burnin = nBurnin, 
-                                        n.iter = nIter, 
-                                        n.thin = nThin, 
-                                        modelFile = settings$modelFile[d,c], 
-                                        Show = Show, 
-                                        track_allParameters = FALSE))
+                                    runCell <- simStudy_runCell(p = p, t = t, nTPC = nTPC, d = d, X = X, b = b, 
+                                                               settings = settings, Show = Show, this.seed = this.seed,
+                                                               prevent_zero_accuracy = prevent_zero_accuracy)
 
                                     # Increment error counter and break if too many errors
                                     redo_JAGS <- redo_JAGS + 1
