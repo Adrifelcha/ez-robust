@@ -16,7 +16,7 @@
 simStudy_runJAGS <- function(summaryData, nTrials, X, jagsData, jagsParameters, jagsInits, 
                          n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, modelFile=NA, Show = TRUE,
                          track_allParameters = track_allParameters, separate_datasets = FALSE,
-                         include_EZ_Robust = FALSE){  
+                         include_EZ_Robust = FALSE, withinSubject = FALSE){  
       # If modelFile is not provided, use the default model file
       if(length(modelFile) == 1 && is.na(modelFile)){
         modelFile <- here("output", "BUGS-models", "EZHBDDM.bug")
