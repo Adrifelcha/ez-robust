@@ -1,4 +1,3 @@
-
 simStudy_runCell <- function(p, t, nTPC, d, X, b, settings, Show, prevent_zero_accuracy, this.seed){
             set.seed(this.seed)
             # Generate dataset with known parameters
@@ -28,7 +27,8 @@ simStudy_runCell <- function(p, t, nTPC, d, X, b, settings, Show, prevent_zero_a
                                     Show = Show, 
                                     track_allParameters = FALSE,
                                     separate_datasets = settings$separate_datasets,
-                                    include_EZ_Robust = settings$include_EZ_Robust))
+                                    include_EZ_Robust = settings$include_EZ_Robust,
+                                    withinSubject = settings$withinSubject))
             end_time <- Sys.time()
     TimeTaken <- difftime(end_time, start_time, units = "secs")
     JAGS_error <- inherits(z, "try-error")
