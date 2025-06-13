@@ -132,9 +132,9 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                                             cat("Time taken: ", difftime(end_time, start_time, units = "secs"), " seconds\n")        
                                         }
 
-                                # Check if R-hat values indicate good convergence
-                                count_bad_rhats <- sum(runJags$rhats[settings$jagsParameters[[d]]] > rhat_cutoff, na.rm = TRUE)
-                                
+                                runJAGS_output <- runJAGS_cellResults(runJags = runCell$runJags)
+                                count_bad_rhats <- sum(runJAGS_output$rhats > rhat_cutoff, na.rm = TRUE)
+                                results_cell <- runJAGS_output$output
                                 # Exit loop if R-hat check is disabled or all R-hats are good
                                 if((!redo_if_bad_rhat) | (count_bad_rhats == 0)){ 
                                     rhat_not_verified <- FALSE
@@ -143,12 +143,10 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                                     cat("Repeating cell", cell, "of", settings$nCells, "due to bad Rhats \n")
                                     this.seed <- this.seed + 10000
                                     redo_Rhat <- redo_Rhat + 1
-                                }       
-                                if(redo_Rhat>0){
-                                            nIter <- nIter * 2
-                                            nBurnin <- nBurnin * 2
-                                            nThin <- nThin * 2
-                                }                        
+                                    nIter <- nIter * 2
+                                    nBurnin <- nBurnin * 2
+                                    nThin <- nThin * 2 
+                                }                       
                         } # Close while() loop for R-hat verification
                 }
 
