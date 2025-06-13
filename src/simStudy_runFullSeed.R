@@ -30,6 +30,7 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
   # Load required libraries with suppressed messages
   suppressMessages(library(R2jags))
   suppressMessages(library(rstan))
+  suppressMessages(library(truncnorm))
 
   # Determine output file name to store seed-specific results
   fileName <- paste(settings$output.folder, "seed-", seed, ".RData", sep="")
