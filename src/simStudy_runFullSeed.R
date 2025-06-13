@@ -132,7 +132,9 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                                             cat("Time taken: ", difftime(end_time, start_time, units = "secs"), " seconds\n")        
                                         }
 
-                                runJAGS_output <- runJAGS_cellResults(runJags = runCell$runJags)
+                                runJAGS_output <- load_JAGS_cellResults(runJags = runCell$runJags, 
+                                                                      this.seed = this.seed, 
+                                                                      parameter_set = runCell$design$parameter_set)
                                 count_bad_rhats <- sum(runJAGS_output$rhats > rhat_cutoff, na.rm = TRUE)
                                 results_cell <- runJAGS_output$output
                                 # Exit loop if R-hat check is disabled or all R-hats are good
@@ -148,39 +150,26 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                                     nThin <- nThin * 2 
                                 }                       
                         } # Close while() loop for R-hat verification
-                }
 
-                if(d != "hierarchical"){
-                # Store results for this regression structured design cell
-                out_Beta <- rbind(out_Beta, list(seed = this.seed,           # Seed used for this cell (could change if R-hats were bad)
-                                                 p = p,                      # Number of participants
-                                                 t = t,                      # Number of trials
-                                                 d = d,                      # Design type
-                                                 c = c,                      # Criterion parameter
-                                                 rhats = runJags$rhats,      # Convergence diagnostics
-                                                 true.values = design$parameter_set,      # True parameter values
-                                                 mean.estimates = runJags$estimates,      # Posterior means
-                                                 std.estimates = runJags$estimates,       # Posterior SDs
-                                                 elapsed.time = runJags$clock             # Computation time
-                                                ))            
-                } else {
-                    
-                    # Store results for this hierarchical design cell
-                    out_H <- rbind(out_H, list(
-                        seed = this.seed,           # Seed used for this cell
-                        p = p,                      # Number of participants
-                        t = t,                      # Number of trials
-                        d = d,                      # Design type
-                        rhats = runJags$rhats,      # Convergence diagnostics
-                        true.values = design$parameter_set,      # True parameter values
-                        mean.estimates = runJags$estimates,      # Posterior means
-                        std.estimates = runJags$estimates,       # Posterior SDs
-                        elapsed.time = runJags$clock             # Computation time
-                    ))                    
+                        # Store results for this design cell by stacking them
+                        if(d != "hierarchical"){ # Designs with betaweight parameter
+                                if(is.na(b)){
+                                    # Beta is random accross datasets
+                                    out_Beta <- rbind(out_Beta, results_cell)            
+                                } else {
+                                    # Beta is fixed accross datasets
+                                    if(b == 0){  # No effect
+                                        out_NoEffect <- rbind(out_NoEffect, results_cell)
+                                    } else {     # Fixed effect
+                                        out_Effect <- rbind(out_Effect, results_cell)
+                                    }
+                                }
+                        } else { # Hierarchical designs
+                            out_H <- rbind(out_H, results_cell)
+                        }
+                        # Increment cell counter
+                        cell <- 1 + cell
                 }
-                                # Increment cell counter
-                cell <- 1 + cell
-
           }
       }
   }
@@ -196,21 +185,25 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
   output <- list("reps" = data.frame("bad_JAGS" = redo_JAGS,          # Count of JAGS errors
                                      "bad_Rhat" = redo_Rhat),         # Count of R-hat issues
                 "settings" = settings)
-  # Add the results from the hierarchical models (if any)
-  if("hierarchical" %in% settings$design_levels){
-    output <- c(output, list("hierarchical" = out_H))
+
+  if(length(out_Effect) > 0){
+    output <- c(output, list("fixedEffect" = out_Effect))
+  }else{
+        if(length(out_NoEffect) > 0){
+            output <- c(output, list("noEffect" = out_NoEffect))
+        }else{
+                if(length(out_Beta) > 0){
+                    output <- c(output, list("randomEffect" = out_Beta))
+                }else{
+                        if(length(out_H) > 0){
+                            output <- c(output, list("hierarchical" = out_H))
+                        }
+                }
+        }
   }
-  # Add the results from the regression structured models (if any)
-  if("ttest" %in% settings$design_levels | "metaregression" %in% settings$design_levels){
-    output <- c(output, list("betaEffect" = out_Beta))
-  }
-  
   # Save results to file
-  save(output, file=fileName)  
+  save(output, file=fileName)
   
   # Return results
   return(output)
 }
-
-#x <- HDDM_runFullSeed(seed = 1, settings = settings, 
-#                      forceRun = TRUE, redo_if_bad_rhat = TRUE, rhat_cutoff = 1.05)
