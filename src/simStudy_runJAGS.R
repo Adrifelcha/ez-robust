@@ -16,7 +16,8 @@
 simStudy_runJAGS <- function(summaryData, nTrials, X, jagsData, jagsParameters, jagsInits, 
                          n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, modelFile=NA, Show = TRUE,
                          track_allParameters = track_allParameters, separate_datasets = FALSE,
-                         include_EZ_Robust = FALSE, withinSubject = FALSE){  
+                         include_EZ_Robust = FALSE, withinSubject = FALSE,
+                         contamination_probability){  
       # If modelFile is not provided, use the default model file
       if(length(modelFile) == 1 && is.na(modelFile)){
         modelFile <- here("output", "BUGS-models", "EZHBDDM.bug")
@@ -60,11 +61,17 @@ simStudy_runJAGS <- function(summaryData, nTrials, X, jagsData, jagsParameters, 
                                                         modelFile=modelFile[m], Show = TRUE, 
                                                         track_allParameters = track_allParameters))
         }else{
+          if(contamination_probability==0){
+            data_type <- "clean"
+          }else{
+            data_type <- "contaminated"
+          }
           results[[m]] <- runJAGS(EZ_stats = EZ_stats, jagsData = jagsData, 
                                   jagsParameters = jagsParameters, jagsInits = jagsInits,
                                   n.chains = n.chains, n.burnin = n.burnin, n.iter = n.iter, 
                                   n.thin = n.thin, modelFile = modelFile[m], Show = TRUE,
                                   track_allParameters = track_allParameters)
+          results[[m]][["data_type"]] <- data_type
         }
       }
 return(results)
@@ -164,7 +171,15 @@ runJAGS <- function(EZ_stats, jagsData, jagsParameters, jagsInits,
               "credInterval" = credInterval, # 95% credible intervals
               "rhats" = rhats,               # Convergence diagnostics
               "clock" = clock,               # Computation time
-              "n.iter" = n.iter))            # Number of iterations
+              "n.iter" = n.iter,
+              "jags_data" = list("correct" = correct,
+                                 "varRT" = varRT,
+                                 "meanRT" = meanRT,
+                                 "medianRT" = medianRT,
+                                 "iqrVarRT" = iqrVarRT,
+                                 "nTrialsPerCondition" = nTrialsPerCondition,
+                                 "nParticipants" = nParticipants,
+                                 "P" = P, "X" = X)))            # Number of iterations
 }
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
