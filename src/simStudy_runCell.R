@@ -1,4 +1,19 @@
-simStudy_runCell <- function(p, t, nTPC, d, X, b, settings, Show, prevent_zero_accuracy, this.seed){
+###############################################################################################################
+# This function runs a single cell of the simulation study
+#
+# Inputs:
+# - p: number of participants
+# - t: number of trials
+# - nTPC: number of trials per condition
+# - d: model type
+# - X: design matrix
+# - b: fixed effects (if available)
+# - settings: settings for the simulation study
+# - Show: whether to show the output
+# - prevent_zero_accuracy: whether to prevent zero accuracy
+# - this.seed: the seed for the random number generator
+###############################################################################################################
+simStudy_runCell <- function(p, t, nTPC, d, X, b = NA, settings, Show, prevent_zero_accuracy, this.seed){
             set.seed(this.seed)
             # Generate dataset with known parameters
             design <- simStudy_setup(nPart = p, nTrials = t, nTrialsPerCondition = nTPC, 
@@ -8,8 +23,7 @@ simStudy_runCell <- function(p, t, nTPC, d, X, b, settings, Show, prevent_zero_a
                                      contamination_probability = settings$contaminant_prob,
                                      separate_datasets = settings$separate_datasets)
                                 
-            # Attempt to run JAGS with error handling
-            start_time <- Sys.time()
+            # Attempt to run JAGS with error handling            
             runJags <- NULL # Default to NULL
             # Run JAGS
             z <- try(runJags <- simStudy_runJAGS(
@@ -28,11 +42,10 @@ simStudy_runCell <- function(p, t, nTPC, d, X, b, settings, Show, prevent_zero_a
                                     track_allParameters = FALSE,
                                     separate_datasets = settings$separate_datasets,
                                     include_EZ_Robust = settings$include_EZ_Robust,
-                                    withinSubject = settings$withinSubject))
-            end_time <- Sys.time()
-    TimeTaken <- difftime(end_time, start_time, units = "secs")
+                                    withinSubject = settings$withinSubject,
+                                    contamination_probability = settings$contaminant_prob))    
     JAGS_error <- inherits(z, "try-error")
 
     # Return a list containing the design, runJags, start_time, and end_time
-    return(list("design" = design, "runJags" = runJags, "TimeTaken" = TimeTaken, "JAGS_error" = JAGS_error))
+    return(list("design" = design, "runJags" = runJags, "JAGS_error" = JAGS_error))
 }
