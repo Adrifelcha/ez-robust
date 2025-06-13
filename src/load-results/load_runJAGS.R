@@ -13,7 +13,7 @@ jags_localResults <- function(runJags_i, EZ_variation, data_variation, true_para
     return(localResults)
 }
 
-runJAGS_cellResults <- function(runJags){
+load_JAGS_cellResults <- function(runJags, this.seed, parameter_set){
     
     EZ_variations <- names(runJags)
     data_variations <- names(runJags$EZ)
