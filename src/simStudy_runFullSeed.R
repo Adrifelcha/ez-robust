@@ -105,15 +105,13 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                         nThin <- settings$n.thin
 
                         # Keep generating and analyzing datasets until R-hat criteria are met
-                        while(rhat_not_verified){                                
+                        while(rhat_not_verified){
                                 # Run the cell
+                                start_time <- Sys.time()
                                 runCell <- simStudy_runCell(p = p, t = t, nTPC = nTPC, d = d, X = X, b = b, 
                                                          settings = settings, Show = Show, this.seed = this.seed,
                                                          prevent_zero_accuracy = prevent_zero_accuracy)
-                                
-                                if(Show){
-                                    cat("Time taken: ", runCell$TimeTaken, " seconds\n")
-                                }
+                                                                
                                 # If JAGS error occurs, retry with different seed
                                 while(runCell$JAGS_error){ 
                                     cat("Repeating cell", cell, "of", settings$nCells, "due to a JAGS error \n")
@@ -129,6 +127,10 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                                         break  # Give up after 5 attempts
                                     }
                                 }
+                                end_time <- Sys.time()                                
+                                if(Show){       
+                                            cat("Time taken: ", difftime(end_time, start_time, units = "secs"), " seconds\n")        
+                                        }
 
                                 # Check if R-hat values indicate good convergence
                                 count_bad_rhats <- sum(runJags$rhats[settings$jagsParameters[[d]]] > rhat_cutoff, na.rm = TRUE)
