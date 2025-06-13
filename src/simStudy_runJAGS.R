@@ -172,14 +172,8 @@ runJAGS <- function(EZ_stats, jagsData, jagsParameters, jagsInits,
               "rhats" = rhats,               # Convergence diagnostics
               "clock" = clock,               # Computation time
               "n.iter" = n.iter,
-              "jags_data" = list("correct" = correct,
-                                 "varRT" = varRT,
-                                 "meanRT" = meanRT,
-                                 "medianRT" = medianRT,
-                                 "iqrVarRT" = iqrVarRT,
-                                 "nTrialsPerCondition" = nTrialsPerCondition,
-                                 "nParticipants" = nParticipants,
-                                 "P" = P, "X" = X)))            # Number of iterations
+              "jags_data" = list("nTrialsPerCondition" = nTrialsPerCondition,
+                                 "nParticipants" = nParticipants)))            # Number of iterations
 }
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
