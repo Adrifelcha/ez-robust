@@ -187,21 +187,19 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                                      "bad_Rhat" = redo_Rhat),         # Count of R-hat issues
                 "settings" = settings)
 
-  if(length(out_Effect) > 0){
-    output <- c(output, list("fixedEffect" = out_Effect))
-  }else{
-        if(length(out_NoEffect) > 0){
-            output <- c(output, list("noEffect" = out_NoEffect))
-        }else{
-                if(length(out_Beta) > 0){
-                    output <- c(output, list("randomEffect" = out_Beta))
-                }else{
-                        if(length(out_H) > 0){
-                            output <- c(output, list("hierarchical" = out_H))
-                        }
-                }
-        }
-  }
+    if(length(out_Effect) > 0){
+        output <- c(output, list("fixedEffect" = out_Effect))
+    }
+    if(length(out_NoEffect) > 0){
+        output <- c(output, list("noEffect" = out_NoEffect))
+    }
+    if(length(out_Beta) > 0){
+        output <- c(output, list("randomEffect" = out_Beta))
+    }
+    if(length(out_H) > 0){
+        output <- c(output, list("hierarchical" = out_H))
+    }
+
   # Save results to file
   save(output, file=fileName)
   
