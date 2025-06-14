@@ -18,7 +18,7 @@ load_allCustomFunctions()
 # SIMULATION SETTINGS
 ##########################################################
 # Create output directory if it doesn't exist
-output_dir <- here("demos", "simStudy_EZ-Clean", "samples")
+output_dir <- here("demos", "simulation-study", "samples")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 # Fixed simulation design variables
@@ -103,7 +103,7 @@ cores       <-  detectCores()
 my.cluster  <-  makeCluster(cores[1]-4)
 
 registerDoParallel(cl = my.cluster)
-resultado <- foreach(seed = 507:512, 
+resultado <- foreach(seed = 1:12, 
                   .errorhandling = "pass",
                   .combine = 'rbind'
                   ) %dopar% {
