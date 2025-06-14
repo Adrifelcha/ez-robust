@@ -166,7 +166,8 @@ runJAGS <- function(EZ_stats, jagsData, jagsParameters, jagsInits,
   names(credInterval) <- jagsParameters
   
   # Step 6: Return comprehensive results object
-  return(list("estimates" = estimates,       # Posterior means
+  return(list("beta_chains" = JAGS_extractSamples("betaweight", samples),
+              "estimates" = estimates,       # Posterior means
               "sd" = error,                  # Posterior standard deviations
               "credInterval" = credInterval, # 95% credible intervals
               "rhats" = rhats,               # Convergence diagnostics
