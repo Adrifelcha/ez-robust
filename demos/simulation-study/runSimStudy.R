@@ -103,29 +103,20 @@ cores       <-  detectCores()
 my.cluster  <-  makeCluster(cores[1]-4)
 
 registerDoParallel(cl = my.cluster)
-resultado <- foreach(seed = 1:12, 
-                  .errorhandling = "pass",
-                  .combine = 'rbind'
-                  ) %dopar% {
-                    Z <- simStudy_runFullSeed(seed = seed,
-                                              settings = settings,
-                                              forceRun = forceRun,
-                                              include_EZ_Robust = settings$include_EZ_Robust,
-                                              redo_if_bad_rhat = TRUE,
-                                              rhat_cutoff = 1.05,
-                                              prevent_zero_accuracy = FALSE,
-                                              Show = TRUE)
-                  }
+# Then modify your foreach call to use this combine function
+resultado <- foreach(seed = 1:8, 
+                    .errorhandling = "pass",
+                    .combine = combine_results
+                    ) %dopar% {
+                        Z <- simStudy_runFullSeed(seed = seed,
+                                                settings = settings,
+                                                forceRun = forceRun,
+                                                include_EZ_Robust = settings$include_EZ_Robust,
+                                                redo_if_bad_rhat = TRUE,
+                                                rhat_cutoff = 1.05,
+                                                prevent_zero_accuracy = FALSE,
+                                                Show = TRUE)
+                    }
 stopCluster(cl = my.cluster)
 
-#resultado501to506 <- resultado
 
-resultado <- load_seedOutput(directory = here("demos", "simulation-studies", "generative_uniforms", "samples"),
-                             object_name = "output")
-settings$nDatasets <- nrow(resultado$results)
-# Store the results to repo-root/output/RData-results
-store_parallelOutput(output = resultado$results, saveTo = here("output", "RData-results"),
-                     settings = settings, simStudyName = "genUniform")
-
-source(here("src", "plotting", "plot_simStudyOutput.R"))
-makeSimStudyPlot(here("output", "RData-results", "sim_genUniform_Meta_drift.RData"), plotType = 2)
