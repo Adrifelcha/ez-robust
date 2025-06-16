@@ -8,9 +8,6 @@
 # These results are stacked by row.
 # Each row is stored in a seed-specific .RData file.
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
-library(here)
-
-
 load_seedOutput <- function(directory = NA, object_name = "output") {
   # seed-specific results are stored in .RData files
   pattern = ".RData$"
