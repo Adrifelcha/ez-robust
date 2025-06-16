@@ -29,7 +29,7 @@ sample_hierarchical_parameters <- function(true_means, true_sdevs) {
         ##########################################################
         # Sample HIERARCHICAL MEANS
         ##########################################################
-        hierarchical_parameters <- list(
+        h_means <- list(
           "bound_mean" = ifelse(length(true_means$bound_mean) == 2,
                                 runif(1, true_means$bound_mean[1], true_means$bound_mean[2]),
                                 true_means$bound_mean),
@@ -38,25 +38,29 @@ sample_hierarchical_parameters <- function(true_means, true_sdevs) {
                                 true_means$drift_mean),
           "nondt_mean" = ifelse(length(true_means$nondt_mean) == 2,
                             runif(1, true_means$nondt_mean[1], true_means$nondt_mean[2]),
-                            true_means$nondt_mean),
+                            true_means$nondt_mean)
+        )
         ##########################################################
         # Sample HIERARCHICAL STANDARD DEVIATIONS
         ##########################################################
+        h_sdevs <- list(
           "bound_sdev" = ifelse(is.null(true_sdevs$bound_sdev),
-                                bound_mean / 5,
+                                h_means$bound_mean / 5,
                                 ifelse(length(true_sdevs$bound_sdev) == 2,
                                       runif(1, true_sdevs$bound_sdev[1], true_sdevs$bound_sdev[2]),
                                       true_sdevs$bound_sdev)),
           "nondt_sdev" = ifelse(is.null(true_sdevs$nondt_sdev),
-                                nondt_mean / 5,
+                                h_means$nondt_mean / 5,
                                 ifelse(length(true_sdevs$nondt_sdev) == 2,
                                     runif(1, true_sdevs$nondt_sdev[1], true_sdevs$nondt_sdev[2]),
                                     true_sdevs$nondt_sdev)),
           "drift_sdev" = ifelse(is.null(true_sdevs$drift_sdev),
-                                drift_mean / 5,
+                                h_means$drift_mean / 5,
                                 ifelse(length(true_sdevs$drift_sdev) == 2,
                                     runif(1, true_sdevs$drift_sdev[1], true_sdevs$drift_sdev[2]),
                                     true_sdevs$drift_sdev)))
+        
+        hierarchical_parameters <- c(h_means, h_sdevs)
         return(hierarchical_parameters)
       }
 }
