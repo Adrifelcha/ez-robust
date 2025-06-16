@@ -81,10 +81,10 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
           # Loop through all trial count levels
           for(t in settings$trial_levels){
 
-                if(d == "hierarchical" || is.null(settings$beta_level)){
+                if(d == "hierarchical" || is.null(settings$beta_levels)){
                     beta_levels <- NA
                 }else{
-                    beta_levels <- settings$beta_level
+                    beta_levels <- settings$beta_levels
                 }
 
                 if(!is.null(settings$withinSubject)){
