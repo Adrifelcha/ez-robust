@@ -206,3 +206,30 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
   # Return results
   return(output)
 }
+
+# Helper function to combine results from multiple seeds
+# Simply using rbind() doesn't work because the results are stored in a list
+combine_results <- function(...) {
+    # Get all results
+    results <- list(...)
+    
+    # Initialize combined output
+    combined <- list(
+        reps = do.call(rbind, lapply(results, function(x) x$reps)),
+        settings = results[[1]]$settings  # settings should be the same for all
+    )
+    
+    # Combine noEffect if it exists in any result
+    noEffect_list <- lapply(results, function(x) if(!is.null(x$noEffect)) x$noEffect else NULL)
+    if(any(!sapply(noEffect_list, is.null))) {
+        combined$noEffect <- do.call(rbind, noEffect_list[!sapply(noEffect_list, is.null)])
+    }
+    
+    # Combine fixedEffect if it exists in any result
+    fixedEffect_list <- lapply(results, function(x) if(!is.null(x$fixedEffect)) x$fixedEffect else NULL)
+    if(any(!sapply(fixedEffect_list, is.null))) {
+        combined$fixedEffect <- do.call(rbind, fixedEffect_list[!sapply(fixedEffect_list, is.null)])
+    }
+    
+    return(combined)
+}
