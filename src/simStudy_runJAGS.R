@@ -46,7 +46,8 @@ simStudy_runJAGS <- function(summaryData, nTrials, X, jagsData, jagsParameters, 
       for(m in model){
         if(separate_datasets){
           results[[m]] <- list("contaminated" = runJAGS(EZ_stats = EZ_stats_contaminated, 
-                                                        jagsData = jagsData[[m]], 
+                                                        jagsData = jagsData[[m]],
+                                                        modelType = m,
                                                         jagsParameters = jagsParameters, 
                                                         jagsInits = jagsInits,
                                                         n.chains = n.chains, n.burnin = n.burnin, 
@@ -54,6 +55,7 @@ simStudy_runJAGS <- function(summaryData, nTrials, X, jagsData, jagsParameters, 
                                                         modelFile=modelFile[m], Show = TRUE, 
                                                         track_allParameters = track_allParameters),
                                "clean" = runJAGS(EZ_stats = EZ_stats_clean, jagsData = jagsData[[m]], 
+                                                        modelType = m,
                                                         jagsParameters = jagsParameters, 
                                                         jagsInits = jagsInits,
                                                         n.chains = n.chains, n.burnin = n.burnin, 
@@ -66,7 +68,8 @@ simStudy_runJAGS <- function(summaryData, nTrials, X, jagsData, jagsParameters, 
           }else{
             data_type <- "contaminated"
           }
-          results[[m]] <- runJAGS(EZ_stats = EZ_stats, jagsData = jagsData, 
+          results[[m]] <- runJAGS(EZ_stats = EZ_stats, jagsData = jagsData,
+                                  modelType = m,
                                   jagsParameters = jagsParameters, jagsInits = jagsInits,
                                   n.chains = n.chains, n.burnin = n.burnin, n.iter = n.iter, 
                                   n.thin = n.thin, modelFile = modelFile[m], Show = TRUE,
@@ -81,7 +84,7 @@ return(results)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Local function that runs the MCMC sampling process
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-runJAGS <- function(EZ_stats, jagsData, jagsParameters, jagsInits, 
+runJAGS <- function(EZ_stats, jagsData, modelType, jagsParameters, jagsInits, 
                          n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, 
                          modelFile=NA, Show = TRUE, track_allParameters = track_allParameters){
   
@@ -90,17 +93,25 @@ runJAGS <- function(EZ_stats, jagsData, jagsParameters, jagsInits,
     modelFile <- here("output", "BUGS-models", "EZHBDDM.bug")
   }
 
-  # Step 1: Extract key summary statistics from the data
-  # These are the sufficient statistics for the EZ-DDM
-  correct <- EZ_stats$correct
-  varRT   <- EZ_stats$varRT
-  meanRT  <- EZ_stats$meanRT
-  medianRT <- EZ_stats$medianRT
-  iqrVarRT <- EZ_stats$iqrVarRT
-  nTrialsPerCondition <- EZ_stats$nTrialsPerCondition
-  nParticipants    <- EZ_stats$nParticipants
-  P <- EZ_stats$P
-  X <- EZ_stats$X
+  # Step 1: Combine base data with summary statistics required by the model
+  jags_data_full <- c(jagsData,
+                      list(correct = EZ_stats$correct,
+                           nTrialsPerCondition = EZ_stats$nTrialsPerCondition,
+                           nParticipants = EZ_stats$nParticipants,
+                           P = EZ_stats$P,
+                           X = EZ_stats$X))
+  
+  # Conditionally add the correct RT statistics based on model type
+  if (modelType == "EZRobust") {
+    jags_data_full$medianRT <- EZ_stats$medianRT
+    jags_data_full$iqrVarRT <- EZ_stats$iqrVarRT
+  } else { # Standard "EZ" model
+    jags_data_full$meanRT <- EZ_stats$meanRT
+    jags_data_full$varRT <- EZ_stats$varRT
+  }
+
+  # Remove any NULL elements from the list (e.g., X for hierarchical models)
+  jags_data_full <- jags_data_full[!sapply(jags_data_full, is.null)]
   
   # Step 2: Run JAGS to sample from the posterior distribution
   # Record start time for performance tracking
@@ -108,7 +119,7 @@ runJAGS <- function(EZ_stats, jagsData, jagsParameters, jagsInits,
   
   # Call JAGS with the specified model and parameters
   # suppressMessages reduces console output during sampling
-  suppressMessages(samples <- jags(data=jagsData, 
+  suppressMessages(samples <- jags(data=jags_data_full, 
                                    parameters.to.save=jagsParameters, 
                                    model=modelFile, 
                                    n.chains=n.chains, 
@@ -173,8 +184,8 @@ runJAGS <- function(EZ_stats, jagsData, jagsParameters, jagsInits,
               "rhats" = rhats,               # Convergence diagnostics
               "clock" = clock,               # Computation time
               "n.iter" = n.iter,
-              "jags_data" = list("nTrialsPerCondition" = nTrialsPerCondition,
-                                 "nParticipants" = nParticipants)))            # Number of iterations
+              "jags_data" = list("nTrialsPerCondition" = EZ_stats$nTrialsPerCondition,
+                                 "nParticipants" = EZ_stats$nParticipants)))            # Number of iterations
 }
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
