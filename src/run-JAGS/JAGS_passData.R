@@ -5,32 +5,33 @@
 # - modelType: Type of model being used (e.g., "hierarchical", or "ttest")
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
 JAGS_passData <- function(EZ_stats, modelType=NA, EZmodel=FALSE, withinSubject=FALSE){
-  # Define the basic data variables needed for all model types
-  passData <- list("nParticipants" = EZ_stats$nParticipants, 
-                   "correct" = EZ_stats$correct)
+  # Start with the basic data
+  passData <- list(
+    nParticipants = EZ_stats$nParticipants,
+    correct = EZ_stats$correct
+  )
 
+  # Add RT summary statistics depending on model type
   if(EZmodel == "EZRobust"){
-    passData <- c(passData, "medianRT" = EZ_stats$medianRT, 
-                            "iqrVarRT" = EZ_stats$iqrVarRT)
-  }else{
-    passData <- c(passData, "meanRT" = EZ_stats$meanRT, 
-                            "varRT" = EZ_stats$varRT)
+    passData$medianRT <- EZ_stats$medianRT
+    passData$iqrVarRT <- EZ_stats$iqrVarRT
+  } else {
+    passData$meanRT <- EZ_stats$meanRT
+    passData$varRT <- EZ_stats$varRT
   }
 
+  # Add trial/participant indexing depending on design
   if(withinSubject){
-    passData <- c("nTrialsPerCondition" = EZ_stats$nTrialsPerCondition, 
-                  "P" = EZ_stats$P, passData)
-  }else{
-    passData <- c("nTrialsPerPerson" = EZ_stats$nTrialsPerPerson, passData)    
+    passData$nTrialsPerCondition <- EZ_stats$nTrialsPerCondition
+    passData$P <- EZ_stats$P
+  } else {
+    passData$nTrialsPerPerson <- EZ_stats$nTrialsPerPerson
   }
-  
-  # For models that include predictors (i.e., metaregression, t-test),
-  # we also need to pass the predictor vector X
-  if(!(is.na(modelType)|modelType=="hierarchical")){
-          # Add the predictor variable X to the list of data to pass
-          passData <- c(passData, "X" = EZ_stats$X)
+
+  # Add predictor variable X if appropriate
+  if(!(is.na(modelType) || modelType == "hierarchical")){
+    passData$X <- EZ_stats$X
   }
-  
-  # Return the list of data to pass to JAGS
+
   return(passData)
 }
