@@ -190,16 +190,16 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                 "settings" = settings)
 
     if(length(out_Effect) > 0){
-        output <- c(output, list("fixedEffect" = out_Effect))
+        output$fixedEffect <- out_Effect
     }
     if(length(out_NoEffect) > 0){
-        output <- c(output, list("noEffect" = out_NoEffect))
+        output$noEffect <- out_NoEffect
     }
     if(length(out_Beta) > 0){
-        output <- c(output, list("randomEffect" = out_Beta))
+        output$betaEffect <- out_Beta
     }
     if(length(out_H) > 0){
-        output <- c(output, list("hierarchical" = out_H))
+        output$hierarchical <- out_H
     }
 
   # Save results to file
