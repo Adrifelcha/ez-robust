@@ -111,7 +111,8 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                                 start_time <- Sys.time()
                                 runCell <- simStudy_runCell(p = p, t = t, nTPC = nTPC, d = d, X = X, b = b, 
                                                          settings = settings, Show = Show, this.seed = this.seed,
-                                                         prevent_zero_accuracy = prevent_zero_accuracy)
+                                                         prevent_zero_accuracy = prevent_zero_accuracy,
+                                                         nIter = nIter, nBurnin = nBurnin, nThin = nThin)
                                                                 
                                 # If JAGS error occurs, retry with different seed
                                 while(runCell$JAGS_error){ 
@@ -120,7 +121,8 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                                     
                                     runCell <- simStudy_runCell(p = p, t = t, nTPC = nTPC, d = d, X = X, b = b, 
                                                                settings = settings, Show = Show, this.seed = this.seed,
-                                                               prevent_zero_accuracy = prevent_zero_accuracy)
+                                                               prevent_zero_accuracy = prevent_zero_accuracy,
+                                                               nIter = nIter, nBurnin = nBurnin, nThin = nThin)
 
                                     # Increment error counter and break if too many errors
                                     redo_JAGS <- redo_JAGS + 1
