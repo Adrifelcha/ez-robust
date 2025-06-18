@@ -28,6 +28,7 @@ simStudy_runCell <- function(p, t, nTPC, d, X, b = NA, settings, Show, prevent_z
             # Run JAGS
             z <- try(runJags <- simStudy_runJAGS(
                                     summaryData = design$sumData, 
+                                    modelType = d,
                                     nTrials = t, 
                                     X = X, 
                                     jagsData = settings$jagsData[[d]], 
