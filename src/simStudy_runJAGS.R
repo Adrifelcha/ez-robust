@@ -13,7 +13,7 @@
 ###################################################################################
 # Main function that orchestrates the MCMC sampling process
 ###################################################################################
-simStudy_runJAGS <- function(summaryData, modelType, nTrials, X, jagsData, jagsParameters, jagsInits, 
+simStudy_runJAGS <- function(summaryData, modelType, nTrials, X, jagsParameters, jagsInits, 
                          n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, modelFile=NA, Show = TRUE,
                          track_allParameters = track_allParameters, separate_datasets = FALSE,
                          include_EZ_Robust = FALSE, withinSubject = FALSE,
@@ -46,7 +46,6 @@ simStudy_runJAGS <- function(summaryData, modelType, nTrials, X, jagsData, jagsP
       for(m in model){
         if(separate_datasets){
           results[[m]] <- list("contaminated" = runJAGS(EZ_stats = EZ_stats_contaminated, 
-                                                        jagsData = jagsData[[m]],
                                                         EZmodel = m,
                                                         modelType = modelType,
                                                         withinSubject = withinSubject,
@@ -56,7 +55,7 @@ simStudy_runJAGS <- function(summaryData, modelType, nTrials, X, jagsData, jagsP
                                                         n.iter = n.iter, n.thin = n.thin, 
                                                         modelFile=modelFile[m], Show = TRUE, 
                                                         track_allParameters = track_allParameters),
-                               "clean" = runJAGS(EZ_stats = EZ_stats_clean, jagsData = jagsData[[m]], 
+                               "clean" = runJAGS(EZ_stats = EZ_stats_clean, 
                                                         EZmodel = m,
                                                         modelType = modelType,
                                                         withinSubject = withinSubject,
@@ -72,7 +71,7 @@ simStudy_runJAGS <- function(summaryData, modelType, nTrials, X, jagsData, jagsP
           }else{
             data_type <- "contaminated"
           }
-          results[[m]] <- runJAGS(EZ_stats = EZ_stats, jagsData = jagsData,
+          results[[m]] <- runJAGS(EZ_stats = EZ_stats,
                                   EZmodel = m,
                                   modelType = modelType,
                                   withinSubject = withinSubject,
@@ -90,7 +89,7 @@ return(results)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Local function that runs the MCMC sampling process
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-runJAGS <- function(EZ_stats, jagsData, EZmodel, modelType, withinSubject,
+runJAGS <- function(EZ_stats, EZmodel, modelType, withinSubject,
                          jagsParameters, jagsInits, 
                          n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, 
                          modelFile=NA, Show = TRUE, track_allParameters = track_allParameters){
