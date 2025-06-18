@@ -13,7 +13,7 @@
 # - prevent_zero_accuracy: whether to prevent zero accuracy
 # - this.seed: the seed for the random number generator
 ###############################################################################################################
-simStudy_runCell <- function(p, t, nTPC, d, X, b = NA, settings, Show, prevent_zero_accuracy, this.seed){
+simStudy_runCell <- function(p, t, nTPC, d, X, b = NA, settings, Show, prevent_zero_accuracy, this.seed, nIter, nBurnin, nThin){
             set.seed(this.seed)
             # Generate dataset with known parameters
             design <- simStudy_setup(nPart = p, nTrials = t, nTrialsPerCondition = nTPC, 
