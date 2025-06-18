@@ -42,9 +42,7 @@ settings <- list("output.folder" = file.path(output_dir, "/"),
 
 # Implied number of cells
 settings <- c(settings,
-              list("nCells" = prod(length(settings$participant_levels),length(settings$trial_levels), length(settings$beta_levels)),
-                   "jagsData" = list(list("EZ" = JAGS_passData(settings$modelType, withinSubject = settings$withinSubject),
-                                          "EZRobust" = JAGS_passData(settings$modelType, EZRobust = settings$include_EZ_Robust, withinSubject = settings$withinSubject)))))
+              list("nCells" = prod(length(settings$participant_levels),length(settings$trial_levels), length(settings$beta_levels))))
 
 # Prepare JAGS objects
 jagsInits <- list()
@@ -57,7 +55,6 @@ for(i in settings$participant_levels){
 settings <- c(settings, list("jagsInits" = jagsInits))
 # Change names so they can be called more easily
 colnames(settings$jagsParameters) <- settings$modelType
-names(settings$jagsData) <- settings$modelType
 names(settings$jagsInits) <- settings$participant_levels
 rownames(settings$modelFile) <- c("EZ", "EZRobust")
 colnames(settings$modelFile) <- settings$modelType
