@@ -41,11 +41,5 @@ load_JAGS_cellResults <- function(runJags, this.seed, parameter_set){
         }     
     }
 
-    rhats <- c()
-    for(name in names(output)){
-        rhats <- c(rhats, output[[name]]$rhats)
-    }    
-
-    final_output <- list(rhats = rhats, output = output)
-    return(final_output)
+    return(output)
 }
