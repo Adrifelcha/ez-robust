@@ -104,6 +104,7 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                         nIter <- settings$n.iter
                         nBurnin <- settings$n.burnin
                         nThin <- settings$n.thin
+                        nChains <- settings$n.chains
 
                         # Keep generating and analyzing datasets until R-hat criteria are met
                         while(rhat_not_verified){
@@ -112,7 +113,7 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                                 runCell <- simStudy_runCell(p = p, t = t, nTPC = nTPC, d = d, X = X, b = b, 
                                                          settings = settings, Show = Show, this.seed = this.seed,
                                                          prevent_zero_accuracy = prevent_zero_accuracy,
-                                                         nIter = nIter, nBurnin = nBurnin, nThin = nThin)
+                                                         nIter = nIter, nBurnin = nBurnin, nThin = nThin, nChains = nChains)
                                                                 
                                 # If JAGS error occurs, retry with different seed
                                 while(runCell$JAGS_error){ 
@@ -122,7 +123,7 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                                     runCell <- simStudy_runCell(p = p, t = t, nTPC = nTPC, d = d, X = X, b = b, 
                                                                settings = settings, Show = Show, this.seed = this.seed,
                                                                prevent_zero_accuracy = prevent_zero_accuracy,
-                                                               nIter = nIter, nBurnin = nBurnin, nThin = nThin)
+                                                               nIter = nIter, nBurnin = nBurnin, nThin = nThin, nChains = nChains)
 
                                     # Increment error counter and break if too many errors
                                     redo_JAGS <- redo_JAGS + 1
@@ -187,7 +188,8 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
   # Start by storing the number of JAGS errors and R-hat issues
   output <- list("reps" = data.frame("bad_JAGS" = redo_JAGS,          # Count of JAGS errors
                                      "bad_Rhat" = redo_Rhat),         # Count of R-hat issues
-                "settings" = settings)
+                "settings" = settings,
+                "total_time" = total_time)
 
     if(length(out_Effect) > 0){
         output$fixedEffect <- out_Effect
