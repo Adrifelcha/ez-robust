@@ -196,7 +196,10 @@ runJAGS <- function(EZ_stats, EZmodel, modelType, withinSubject, seed,
               "rhats" = rhats,               # Convergence diagnostics
               "clock" = clock,               # Computation time
               "bad_rhat_count" = bad_rhat_count,
-              "n.iter" = n.iter,
+              "nIter" = nIter,
+              "nBurnin" = nBurnin,
+              "nThin" = nThin,
+              "this.seed" = this.seed,
               "jags_data" = list("nTrialsPerCondition" = EZ_stats$nTrialsPerCondition,
                                  "nParticipants" = EZ_stats$nParticipants)))            # Number of iterations
 }
