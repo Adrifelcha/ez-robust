@@ -6,9 +6,14 @@ jags_localResults <- function(runJags_i, EZ_variation, data_variation, true_para
                          data_type = data_variation,
                          rhats = runJags_i$rhats,      # Convergence diagnostics
                          true.values = true_parameter_set,      # True parameter values
-                         mean.estimates = runJags_i$estimates,      # Posterior means
-                         std.estimates = runJags_i$estimates,       # Posterior SDs
-                         elapsed.time = runJags_i$clock             # Computation time
+                         mean.estimates = runJags_i$estimates,         # Posterior means
+                         std.estimates = runJags_i$estimates,          # Posterior SDs
+                         elapsed.time = runJags_i$clock,               # Computation time
+                         this.seed = runJags_i$this.seed,             # Seed used for this cell (could have changed if R-hats were bad)
+                         nIter = runJags_i$nIter,                      # Final used number of iterations
+                         nBurnin = runJags_i$nBurnin,                 # Final used number of burn-in iterations
+                         nThin = runJags_i$nThin,                     # Final used number of thinning iterations
+                         bad_rhat_count = runJags_i$bad_rhat_count    # Number of times R-hats were bad                         
                         )
     return(localResults)
 }
