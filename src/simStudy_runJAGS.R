@@ -14,10 +14,9 @@
 # Main function that orchestrates the MCMC sampling process
 ###################################################################################
 simStudy_runJAGS <- function(summaryData, modelType, nTrials, X, jagsParameters, jagsInits, 
-                         n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, modelFile=NA, Show = TRUE,
-                         track_allParameters = track_allParameters, separate_datasets = FALSE,
-                         include_EZ_Robust = FALSE, withinSubject = FALSE,
-                         contamination_probability){  
+                             n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, modelFile=NA, Show = TRUE,
+                             track_allParameters = track_allParameters, redo_if_bad_rhat=FALSE, rhat_cutoff= 1.05, 
+                             separate_datasets = FALSE, include_EZ_Robust = FALSE, withinSubject = FALSE, contamination_probability=0){  
       # If modelFile is not provided, use the default model file
       if(length(modelFile) == 1 && is.na(modelFile)){
         modelFile <- here("output", "BUGS-models", "EZHBDDM.bug")
@@ -54,7 +53,8 @@ simStudy_runJAGS <- function(summaryData, modelType, nTrials, X, jagsParameters,
                                                         n.chains = n.chains, n.burnin = n.burnin, 
                                                         n.iter = n.iter, n.thin = n.thin, 
                                                         modelFile=modelFile[m], Show = TRUE, 
-                                                        track_allParameters = track_allParameters),
+                                                        track_allParameters = track_allParameters,
+                                                        redo_if_bad_rhat=redo_if_bad_rhat, rhat_cutoff= rhat_cutoff),
                                "clean" = runJAGS(EZ_stats = EZ_stats_clean, 
                                                         EZmodel = m,
                                                         modelType = modelType,
@@ -64,7 +64,8 @@ simStudy_runJAGS <- function(summaryData, modelType, nTrials, X, jagsParameters,
                                                         n.chains = n.chains, n.burnin = n.burnin, 
                                                         n.iter = n.iter, n.thin = n.thin, 
                                                         modelFile=modelFile[m], Show = TRUE, 
-                                                        track_allParameters = track_allParameters))
+                                                        track_allParameters = track_allParameters,
+                                                        redo_if_bad_rhat=redo_if_bad_rhat, rhat_cutoff= rhat_cutoff))
         }else{
           if(contamination_probability==0){
             data_type <- "clean"
@@ -78,7 +79,8 @@ simStudy_runJAGS <- function(summaryData, modelType, nTrials, X, jagsParameters,
                                   jagsParameters = jagsParameters, jagsInits = jagsInits,
                                   n.chains = n.chains, n.burnin = n.burnin, n.iter = n.iter, 
                                   n.thin = n.thin, modelFile = modelFile[m], Show = TRUE,
-                                  track_allParameters = track_allParameters)
+                                  track_allParameters = track_allParameters,
+                                  redo_if_bad_rhat=redo_if_bad_rhat, rhat_cutoff= rhat_cutoff)
           results[[m]][["data_type"]] <- data_type
         }
       }
@@ -89,10 +91,10 @@ return(results)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Local function that runs the MCMC sampling process
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-runJAGS <- function(EZ_stats, EZmodel, modelType, withinSubject,
-                         jagsParameters, jagsInits, 
-                         n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, 
-                         modelFile=NA, Show = TRUE, track_allParameters = track_allParameters){
+runJAGS <- function(EZ_stats, EZmodel, modelType, withinSubject, seed,
+                    jagsParameters, jagsInits, n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, 
+                    modelFile=NA, Show = TRUE, track_allParameters = track_allParameters,
+                    redo_if_bad_rhat=FALSE, rhat_cutoff= 1.05){
   
   # If modelFile is not provided, use the default model file
   if(is.na(modelFile)){
@@ -102,36 +104,57 @@ runJAGS <- function(EZ_stats, EZmodel, modelType, withinSubject,
   # Step 1: Combine base data with summary statistics required by the model
   jagsData <- JAGS_passData(EZ_stats, modelType=modelType, EZmodel=EZmodel, withinSubject=withinSubject)
 
-  # Step 2: Run JAGS to sample from the posterior distribution
-  # Record start time for performance tracking
-  tic <- clock::date_now(zone="UTC")
-  
-  # Call JAGS with the specified model and parameters
-  # suppressMessages reduces console output during sampling
-  suppressMessages(samples <- jags(data=jagsData, 
-                                   parameters.to.save=jagsParameters, 
-                                   model=modelFile, 
-                                   n.chains=n.chains, 
-                                   n.iter=n.iter, 
-                                   n.burnin=n.burnin, 
-                                   n.thin=n.thin, 
-                                   DIC=T,           # Calculate Deviance Information Criterion
-                                   inits=jagsInits))
-  
-  # Record end time and calculate duration
-  toc <- clock::date_now(zone="UTC")
-  clock <- as.numeric(toc-tic, units="secs")  # Computation time in seconds
-  
-  # Step 3: Extract MCMC samples and calculate convergence diagnostics
-  object <- samples$BUGSoutput$sims.array  # 3D array: [iterations, chains, parameters]
-  rhats <- apply(object, 3, getRhat)       # Calculate R-hat for each parameter
-  
-  # Step 4: Generate diagnostic plots if requested
+
+
+  # Step 2: Run JAGS to sample from the posterior distribution  
+  # Flag to control R-hat checking loop
+  rhat_not_verified <- TRUE
+  this.seed <- seed
+  nIter <- n.iter
+  nBurnin <- n.burnin
+  nThin <- n.thin  
+  bad_rhat_count <- 0
+  while(rhat_not_verified){
+                    # Set up start time
+                    tic <- clock::date_now(zone="UTC")
+                    # Call JAGS (suppressMessages reduces console output during sampling
+                    suppressMessages(samples <- jags(data=jagsData, 
+                                                    parameters.to.save=jagsParameters, 
+                                                    model=modelFile, 
+                                                    n.chains=n.chains, 
+                                                    n.iter=n.iter, 
+                                                    n.burnin=n.burnin, 
+                                                    n.thin=n.thin, 
+                                                    DIC=T, inits=jagsInits))                    
+                    # Record end time
+                    toc <- clock::date_now(zone="UTC")
+                    # Compute computation time
+                    clock <- as.numeric(toc-tic, units="secs")  # Computation time in seconds
+                    
+                    # Extract MCMC samples and calculate convergence diagnostics
+                    object <- samples$BUGSoutput$sims.array  # 3D array: [iterations, chains, parameters]
+                    rhats <- apply(object, 3, getRhat)       # Calculate R-hat for each parameter
+
+                    # Check if R-hats are too high
+                    if(redo_if_bad_rhat){
+                            if(any(rhats > rhat_cutoff)){
+                                  bad_rhat_count <- bad_rhat_count + 1
+                                  rhat_not_verified <- TRUE
+                                  this.seed <- this.seed + 10000                                  
+                                  nIter <- round(nIter * 1.5,0)
+                                  nBurnin <- round(nBurnin * 1.5,0)
+                                  if(bad_rhat_count > 2){
+                                    nThin <- round(nThin * 2,0)
+                                  }                                  
+                            }else{    rhat_not_verified <- FALSE   }
+                    }else{            rhat_not_verified <- FALSE   }
+  }
+  # Step 3: Generate diagnostic plots if requested
   if(Show){  
-    JAGS_plotChain(samples = samples)   
+    JAGS_plotChain(samples = samples)
   }
   
-  # Step 5: Process posterior samples for each monitored parameter
+  # Step 4: Process posterior samples for each monitored parameter
   estimates <- list()      # Will store posterior means
   error <- list()          # Will store posterior standard deviations
   credInterval <- list()   # Will store 95% credible intervals
@@ -165,13 +188,14 @@ runJAGS <- function(EZ_stats, EZmodel, modelType, withinSubject,
   names(error)        <- jagsParameters
   names(credInterval) <- jagsParameters
   
-  # Step 6: Return comprehensive results object
+  # Step 5: Return comprehensive results object
   return(list("beta_chains" = JAGS_extractSamples("betaweight", samples),
               "estimates" = estimates,       # Posterior means
               "sd" = error,                  # Posterior standard deviations
               "credInterval" = credInterval, # 95% credible intervals
               "rhats" = rhats,               # Convergence diagnostics
               "clock" = clock,               # Computation time
+              "bad_rhat_count" = bad_rhat_count,
               "n.iter" = n.iter,
               "jags_data" = list("nTrialsPerCondition" = EZ_stats$nTrialsPerCondition,
                                  "nParticipants" = EZ_stats$nParticipants)))            # Number of iterations
