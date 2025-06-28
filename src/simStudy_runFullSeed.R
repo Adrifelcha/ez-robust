@@ -56,10 +56,7 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
   if(settings$contaminant_prob==0){
         settings$separate_datasets <- FALSE
   }
-  
-  # Create a marker file to indicate simulation has started
-  write('Seed has been initiated', paste(settings$output.folder, "seed-", seed, "_start.txt", sep=""))
-  
+    
   # Initialize storage for results - separate lists for hierarchical and regression structured models
   out_H <- list()     # Will store results from hierarchical models
   out_Beta <- list()  # Will store results from models with random Beta value
@@ -92,7 +89,7 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                 }
                 
                 for(b in beta_levels){
-                        write('Cell is running', paste(settings$output.folder, "seed-", seed, "_cell-", cell, "_p", p, "t", t, "b", b,".txt", sep=""))
+                        write('Cell is running', paste(settings$log.folder, "seed-", seed, "_cell-", cell, "_p", p, "t", t, "b", b,".txt", sep=""))
                         # Flag to control R-hat checking loop
                         rhat_not_verified <- TRUE
                         
@@ -154,7 +151,7 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                         }
                         # Increment cell counter
                         cell <- 1 + cell
-                        file.remove(paste(settings$output.folder, "seed-", seed, "_cell-", cell-1, "_p", p, "t", t, "b", b,".txt", sep=""))
+                        file.remove(paste(settings$log.folder, "seed-", seed, "_cell-", cell-1, "_p", p, "t", t, "b", b,".txt", sep=""))
                 }
           }
       }
@@ -164,7 +161,7 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
   grand_toc <- clock::date_now(zone="UTC")
   total_time <- difftime(grand_toc, grand_tic, units="mins")
   write(paste("Running this seed took ", total_time, "minutes.\n"), 
-        paste(settings$output.folder, "seed-", seed, "_end.txt", sep=""))
+        paste(settings$log.folder, "seed-", seed, "_end.txt", sep=""))
   
   # Create and save output object
   # Start by storing the number of JAGS errors and R-hat issues
