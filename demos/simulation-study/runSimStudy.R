@@ -11,7 +11,7 @@ library(foreach)
 library(doParallel)
 
 # Call the function within the src directory
-source(here("src", "manage-results", "load_allFunctions.R"))
+source(here("src", "load_allFunctions.R"))
 load_allCustomFunctions()
 
 ##########################################################
