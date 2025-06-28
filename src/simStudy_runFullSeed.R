@@ -126,7 +126,7 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                                 break  # Give up after 5 attempts
                             }
                         }
-                        end_time <- Sys.time()                                
+                        end_time <- Sys.time()
                         if(Show){       
                                     cat("Time taken: ", difftime(end_time, start_time, units = "secs"), " seconds\n")        
                                 }
@@ -167,9 +167,9 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
   # Create and save output object
   # Start by storing the number of JAGS errors and R-hat issues
   output <- list("reps" = data.frame("bad_JAGS" = redo_JAGS,          # Count of JAGS errors
-                                     "bad_Rhat" = redo_Rhat),         # Count of R-hat issues
-                "settings" = settings,
-                "total_time" = total_time)
+                                     "bad_Rhat" = redo_Rhat,
+                                     "total_time" = total_time),         # Count of R-hat issues
+                "settings" = settings)
 
     if(length(out_Effect) > 0){
         output$fixedEffect <- out_Effect
