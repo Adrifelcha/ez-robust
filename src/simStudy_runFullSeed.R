@@ -154,6 +154,7 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                         }
                         # Increment cell counter
                         cell <- 1 + cell
+                        file.remove(paste(settings$output.folder, "seed-", seed, "_cell-", cell-1, "_p", p, "t", t, "b", b,".txt", sep=""))
                 }
           }
       }
