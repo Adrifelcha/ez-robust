@@ -101,61 +101,39 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                         # Display progress information
                         cat("Running cell", cell, "of", settings$nCells, "\n")
                         
-                        nIter <- settings$n.iter
-                        nBurnin <- settings$n.burnin
-                        nThin <- settings$n.thin
-                        nChains <- settings$n.chains
+                        # Run the cell
+                        start_time <- Sys.time()
+                        runCell <- simStudy_runCell(p = p, t = t, nTPC = nTPC, d = d, X = X, b = b, 
+                                                    settings = settings, Show = Show, this.seed = this.seed,
+                                                    prevent_zero_accuracy = prevent_zero_accuracy,
+                                                    redo_if_bad_rhat=redo_if_bad_rhat, rhat_cutoff=rhat_cutoff,
+                                                    nIter = nIter, nBurnin = nBurnin, nThin = nThin, nChains = nChains)
+                                                        
+                        # If JAGS error occurs, retry with different seed
+                        while(runCell$JAGS_error){ 
+                            cat("Repeating cell", cell, "of", settings$nCells, "due to a JAGS error \n")
+                            this.seed <- this.seed + 10000  # Change seed by 10,000
+                            
+                            runCell <- simStudy_runCell(p = p, t = t, nTPC = nTPC, d = d, X = X, b = b, 
+                                                        settings = settings, Show = Show, this.seed = this.seed,
+                                                        prevent_zero_accuracy = prevent_zero_accuracy,
+                                                        redo_if_bad_rhat=redo_if_bad_rhat, rhat_cutoff=rhat_cutoff,
+                                                        nIter = nIter, nBurnin = nBurnin, nThin = nThin, nChains = nChains)
 
-                        # Keep generating and analyzing datasets until R-hat criteria are met
-                        while(rhat_not_verified){
-                                # Run the cell
-                                start_time <- Sys.time()
-                                runCell <- simStudy_runCell(p = p, t = t, nTPC = nTPC, d = d, X = X, b = b, 
-                                                         settings = settings, Show = Show, this.seed = this.seed,
-                                                         prevent_zero_accuracy = prevent_zero_accuracy,
-                                                         redo_if_bad_rhat=redo_if_bad_rhat, rhat_cutoff=rhat_cutoff,
-                                                         nIter = nIter, nBurnin = nBurnin, nThin = nThin, nChains = nChains)
-                                                                
-                                # If JAGS error occurs, retry with different seed
-                                while(runCell$JAGS_error){ 
-                                    cat("Repeating cell", cell, "of", settings$nCells, "due to a JAGS error \n")
-                                    this.seed <- this.seed + 10000  # Change seed by 10,000
-                                    
-                                    runCell <- simStudy_runCell(p = p, t = t, nTPC = nTPC, d = d, X = X, b = b, 
-                                                               settings = settings, Show = Show, this.seed = this.seed,
-                                                               prevent_zero_accuracy = prevent_zero_accuracy,
-                                                               redo_if_bad_rhat=redo_if_bad_rhat, rhat_cutoff=rhat_cutoff,
-                                                               nIter = nIter, nBurnin = nBurnin, nThin = nThin, nChains = nChains)
-
-                                    # Increment error counter and break if too many errors
-                                    redo_JAGS <- redo_JAGS + 1
-                                    if(redo_JAGS > 5){ 
-                                        break  # Give up after 5 attempts
-                                    }
+                            # Increment error counter and break if too many errors
+                            redo_JAGS <- redo_JAGS + 1
+                            if(redo_JAGS > 5){ 
+                                break  # Give up after 5 attempts
+                            }
+                        }
+                        end_time <- Sys.time()                                
+                        if(Show){       
+                                    cat("Time taken: ", difftime(end_time, start_time, units = "secs"), " seconds\n")        
                                 }
-                                end_time <- Sys.time()                                
-                                if(Show){       
-                                            cat("Time taken: ", difftime(end_time, start_time, units = "secs"), " seconds\n")        
-                                        }
 
-                                runJAGS_output <- load_JAGS_cellResults(runJags = runCell$runJags, 
-                                                                      this.seed = this.seed, 
-                                                                      parameter_set = runCell$design$parameter_set)
-                                count_bad_rhats <- sum(runJAGS_output$rhats > rhat_cutoff, na.rm = TRUE)
-                                results_cell <- runJAGS_output$output
-                                # Exit loop if R-hat check is disabled or all R-hats are good
-                                if((!redo_if_bad_rhat) | (count_bad_rhats == 0)){ 
-                                    rhat_not_verified <- FALSE
-                                } else { 
-                                    # Otherwise, try again with different seed
-                                    cat("Repeating cell", cell, "of", settings$nCells, "due to bad Rhats \n")
-                                    this.seed <- this.seed + 10000
-                                    redo_Rhat <- redo_Rhat + 1
-                                    nIter <- nIter * 2
-                                    nBurnin <- nBurnin * 2
-                                    nThin <- nThin * 2 
-                                }                       
-                        } # Close while() loop for R-hat verification
+                        runJAGS_output <- load_JAGS_cellResults(runJags = runCell$runJags,
+                                                                parameter_set = runCell$design$parameter_set)
+                        results_cell <- runJAGS_output$output
 
                         # Store results for this design cell by stacking them
                         if(d != "hierarchical"){ # Designs with betaweight parameter
