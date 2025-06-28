@@ -19,10 +19,13 @@ load_allCustomFunctions()
 ##########################################################
 # Create output directory if it doesn't exist
 output_dir <- here("demos", "simulation-study", "samples")
+log_dir <- here("demos", "simulation-study", "logs")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(log_dir, recursive = TRUE, showWarnings = FALSE)
 
 # Fixed simulation design variables
 settings <- list("output.folder" = file.path(output_dir, "/"),
+                 "log.folder" = file.path(log_dir, "/"),
                  "participant_levels" = c(20,40,80,160,320),
                  "trial_levels" = c(20,40,80,160,320),
                  "beta_levels" = c(0, 0.1, 0.2, 0.4, 0.8),
