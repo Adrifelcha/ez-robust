@@ -92,6 +92,7 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                 }
                 
                 for(b in beta_levels){
+                        write('Cell is running', paste(settings$output.folder, "seed-", seed, "_cell-", cell, "_p", p, "t", t, "b", b,".txt", sep=""))
                         # Flag to control R-hat checking loop
                         rhat_not_verified <- TRUE
                         
