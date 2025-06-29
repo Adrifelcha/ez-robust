@@ -105,7 +105,8 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                                                     settings = settings, Show = Show, this.seed = this.seed,
                                                     prevent_zero_accuracy = prevent_zero_accuracy,
                                                     redo_if_bad_rhat=redo_if_bad_rhat, rhat_cutoff=rhat_cutoff,
-                                                    nIter = nIter, nBurnin = nBurnin, nThin = nThin, nChains = nChains)
+                                                    nIter = settings$n.iter, nBurnin = settings$n.burnin, 
+                                                    nThin = settings$n.thin, nChains = settings$n.chains)
                                                         
                         # If JAGS error occurs, retry with different seed
                         while(runCell$JAGS_error){ 
@@ -129,9 +130,8 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                                     cat("Time taken: ", difftime(end_time, start_time, units = "secs"), " seconds\n")        
                                 }
 
-                        runJAGS_output <- load_JAGS_cellResults(runJags = runCell$runJags,
-                                                                parameter_set = runCell$design$parameter_set)
-                        results_cell <- runJAGS_output$output
+                        results_cell <- load_JAGS_cellResults(runJags = runCell$runJags,
+                                                                parameter_set = runCell$design$parameter_set)                       
 
                         # Store results for this design cell by stacking them
                         if(d != "hierarchical"){ # Designs with betaweight parameter
