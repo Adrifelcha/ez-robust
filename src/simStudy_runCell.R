@@ -14,8 +14,7 @@
 # - this.seed: the seed for the random number generator
 ###############################################################################################################
 simStudy_runCell <- function(p, t, nTPC, d, X, b = NA, settings, Show, prevent_zero_accuracy, redo_if_bad_rhat=FALSE, 
-                             rhat_cutoff= 1.05, this.seed, nIter, nBurnin, nThin, nChains){
-            set.seed(this.seed)
+                             rhat_cutoff= 1.05, this.seed, nIter, nBurnin, nThin, nChains){            
             # Generate dataset with known parameters
             design <- simStudy_setup(nPart = p, nTrials = t, nTrialsPerCondition = nTPC, 
                                      true_sdevs = settings$true_sdevs, true_means = settings$true_means, 
