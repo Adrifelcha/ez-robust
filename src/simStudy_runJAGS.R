@@ -13,7 +13,7 @@
 ###################################################################################
 # Main function that orchestrates the MCMC sampling process
 ###################################################################################
-simStudy_runJAGS <- function(summaryData, modelType, nTrials, X, jagsParameters, jagsInits, 
+simStudy_runJAGS <- function(summaryData, modelType, nTrials, X, jagsParameters, jagsInits, this.seed,
                              n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, modelFile=NA, Show = TRUE,
                              track_allParameters = track_allParameters, redo_if_bad_rhat=FALSE, rhat_cutoff= 1.05, 
                              separate_datasets = FALSE, include_EZ_Robust = FALSE, withinSubject = FALSE, contamination_probability=0){  
@@ -47,7 +47,7 @@ simStudy_runJAGS <- function(summaryData, modelType, nTrials, X, jagsParameters,
           results[[m]] <- list("contaminated" = runJAGS(EZ_stats = EZ_stats_contaminated, 
                                                         EZmodel = m,
                                                         modelType = modelType,
-                                                        withinSubject = withinSubject,
+                                                        withinSubject = withinSubject, this.seed = this.seed,
                                                         jagsParameters = jagsParameters, 
                                                         jagsInits = jagsInits,
                                                         n.chains = n.chains, n.burnin = n.burnin, 
@@ -58,7 +58,7 @@ simStudy_runJAGS <- function(summaryData, modelType, nTrials, X, jagsParameters,
                                "clean" = runJAGS(EZ_stats = EZ_stats_clean, 
                                                         EZmodel = m,
                                                         modelType = modelType,
-                                                        withinSubject = withinSubject,
+                                                        withinSubject = withinSubject, this.seed = this.seed,
                                                         jagsParameters = jagsParameters, 
                                                         jagsInits = jagsInits,
                                                         n.chains = n.chains, n.burnin = n.burnin, 
@@ -75,7 +75,7 @@ simStudy_runJAGS <- function(summaryData, modelType, nTrials, X, jagsParameters,
           results[[m]] <- runJAGS(EZ_stats = EZ_stats,
                                   EZmodel = m,
                                   modelType = modelType,
-                                  withinSubject = withinSubject,
+                                  withinSubject = withinSubject, this.seed = this.seed,
                                   jagsParameters = jagsParameters, jagsInits = jagsInits,
                                   n.chains = n.chains, n.burnin = n.burnin, n.iter = n.iter, 
                                   n.thin = n.thin, modelFile = modelFile[m], Show = TRUE,
@@ -91,7 +91,7 @@ return(results)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Local function that runs the MCMC sampling process
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-runJAGS <- function(EZ_stats, EZmodel, modelType, withinSubject, seed,
+runJAGS <- function(EZ_stats, EZmodel, modelType, withinSubject, this.seed,
                     jagsParameters, jagsInits, n.chains=4, n.burnin=250, n.iter=2000, n.thin=1, 
                     modelFile=NA, Show = TRUE, track_allParameters = track_allParameters,
                     redo_if_bad_rhat=FALSE, rhat_cutoff= 1.05){
@@ -103,8 +103,6 @@ runJAGS <- function(EZ_stats, EZmodel, modelType, withinSubject, seed,
 
   # Step 1: Combine base data with summary statistics required by the model
   jagsData <- JAGS_passData(EZ_stats, modelType=modelType, EZmodel=EZmodel, withinSubject=withinSubject)
-
-
 
   # Step 2: Run JAGS to sample from the posterior distribution  
   # Flag to control R-hat checking loop
@@ -122,9 +120,9 @@ runJAGS <- function(EZ_stats, EZmodel, modelType, withinSubject, seed,
                                                     parameters.to.save=jagsParameters, 
                                                     model=modelFile, 
                                                     n.chains=n.chains, 
-                                                    n.iter=n.iter, 
-                                                    n.burnin=n.burnin, 
-                                                    n.thin=n.thin, 
+                                                    n.iter=nIter, 
+                                                    n.burnin=nBurnin, 
+                                                    n.thin=nThin, 
                                                     DIC=T, inits=jagsInits))                    
                     # Record end time
                     toc <- clock::date_now(zone="UTC")
@@ -140,12 +138,11 @@ runJAGS <- function(EZ_stats, EZmodel, modelType, withinSubject, seed,
                             if(any(rhats > rhat_cutoff)){
                                   bad_rhat_count <- bad_rhat_count + 1
                                   rhat_not_verified <- TRUE
-                                  this.seed <- this.seed + 10000                                  
+                                  this.seed <- this.seed + 10000
                                   nIter <- round(nIter * 1.5,0)
                                   nBurnin <- round(nBurnin * 1.5,0)
-                                  if(bad_rhat_count > 2){
-                                    nThin <- round(nThin * 2,0)
-                                  }                                  
+                                  if(bad_rhat_count > 2){      nThin <- round(nThin * 2,0)      }
+                                  set.seed(this.seed)
                             }else{    rhat_not_verified <- FALSE   }
                     }else{            rhat_not_verified <- FALSE   }
   }
