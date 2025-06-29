@@ -26,9 +26,9 @@ dir.create(log_dir, recursive = TRUE, showWarnings = FALSE)
 # Fixed simulation design variables
 settings <- list("output.folder" = file.path(output_dir, "/"),
                  "log.folder" = file.path(log_dir, "/"),
-                 "participant_levels" = c(20,40,80,160,320),
+                 "participant_levels" = c(20,40,80,160), # Remove 320
                  "trial_levels" = c(20,40,80,160,320),
-                 "beta_levels" = c(0, 0.1, 0.2, 0.4, 0.8),
+                 "beta_levels" = c(0, 0.1, 0.2, 0.4), # Remove 0.8
                  "separate_datasets" = TRUE,
                  "contaminant_prob" = 0.05,
                  "include_EZ_Robust" = TRUE,
@@ -104,7 +104,7 @@ my.cluster  <-  makeCluster(cores[1]-4)
 
 registerDoParallel(cl = my.cluster)
 # Then modify your foreach call to use this combine function
-resultado <- foreach(seed = 1:1000, 
+resultado <- foreach(seed = 15:1000, 
                     .errorhandling = "pass",
                     .combine = combine_results
                     ) %dopar% {
