@@ -16,6 +16,7 @@ load_seedOutput <- function(directory = NA, object_name = "output") {
     
     # Store all results in a temporary list
     all_seed_results <- list()
+    valid_count <- 0
     for(i in seq_along(files)) {
           # Load the file into a temporary environment to avoid namespace conflicts
           archive <- files[i]
@@ -26,11 +27,12 @@ load_seedOutput <- function(directory = NA, object_name = "output") {
           # Check if the loaded file contains the expected object
           if(!exists(object_name, envir = temp_env)) {
             warning("RData file ", archive, " does not contain a '", object_name, "' object")
-            next
+            next  # Skip this file
           }
           
-          # Get the object from the environment
-          all_seed_results[[i]] <- get(object_name, envir = temp_env)
+          # Get the object from the environment and add to list
+          valid_count <- valid_count + 1
+          all_seed_results[[valid_count]] <- get(object_name, envir = temp_env)
     }
   
     # Get the number of valid seeds
