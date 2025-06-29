@@ -67,6 +67,9 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
   redo_JAGS <- 0      # Counter for JAGS errors
   redo_Rhat <- 0      # Counter for R-hat convergence issues
  
+  set.seed(seed)
+  this.seed <- seed
+
    # Loop through all design factors (hierarchical, metaregression, t-test)
   for(d in settings$design_levels){
       
@@ -93,9 +96,6 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                         # Flag to control R-hat checking loop
                         rhat_not_verified <- TRUE
                         
-                        # Initialize default seed to master seed
-                        this.seed <- seed
-                        
                         # Display progress information
                         cat("Running cell", cell, "of", settings$nCells, "\n")
                         
@@ -112,7 +112,7 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                         while(runCell$JAGS_error){ 
                             cat("Repeating cell", cell, "of", settings$nCells, "due to a JAGS error \n")
                             this.seed <- this.seed + 10000  # Change seed by 10,000
-                            
+                            set.seed(this.seed)
                             runCell <- simStudy_runCell(p = p, t = t, nTPC = nTPC, d = d, X = X, b = b, 
                                                         settings = settings, Show = Show, this.seed = this.seed,
                                                         prevent_zero_accuracy = prevent_zero_accuracy,
