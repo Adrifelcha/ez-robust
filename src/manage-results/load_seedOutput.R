@@ -79,6 +79,6 @@ load_seedOutput <- function(directory = NA, object_name = "output") {
 
     cat("Successfully combined", n_seeds, "seed-specific output files into a single list object.\n")
     
+    cat("About to return final_output with names:", names(final_output), "\n")
     return(final_output)
 }
-##########################
