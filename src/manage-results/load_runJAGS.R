@@ -44,5 +44,5 @@ load_JAGS_cellResults <- function(runJags, parameter_set){
         }     
     }
 
-    return(output)
+    return(list("output" = output))
 }
