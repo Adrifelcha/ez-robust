@@ -1,6 +1,6 @@
 plot_cellBetaEstimates <- function(resultsFile, show_frequency_bars = FALSE,
-                                   show_x_axis = TRUE, show_y_axis = TRUE, y_range = NA,
-                                   output_dir = NA) {
+                                   show_x_axis = TRUE, show_y_axis = TRUE, y_range = NULL,
+                                   output_dir = NA, bty = "n") {
       # Extract the filename part from the full path
       filename <- basename(resultsFile)
       # Remove the .RData extension
@@ -18,7 +18,7 @@ plot_cellBetaEstimates <- function(resultsFile, show_frequency_bars = FALSE,
       spacing <- 2.5  # Space between distributions
       last_x_pos <- length(beta_levels) * spacing
       xlim <- c((spacing/2), last_x_pos + (spacing/2))
-      if(is.na(y_range)){
+      if(is.null(y_range)){
         y_range <- c(-0.4, 1)
       }
 
@@ -37,10 +37,12 @@ plot_cellBetaEstimates <- function(resultsFile, show_frequency_bars = FALSE,
       }
 
       # Set up the plotting area to be square with no margin lines
-      plot(NA, NA, xlim = xlim, ylim = y_range, ann = F, bty = "n", axes = F) 
+      plot(NA, NA, xlim = xlim, ylim = y_range, ann = F, axes = F)
+      box(bty = bty)
 
       if(show_x_axis){
-          axis(1, at = seq(1, length(beta_levels)) * spacing, labels = beta_levels, line = 1)
+          labels <- sapply(beta_levels, function(x) as.expression(bquote(beta == .(x))))
+          axis(1, at = seq(1, length(beta_levels)) * spacing, labels = labels, line = 1)
       }
       if(show_y_axis){  
           y_axis <- seq(y_range[1], y_range[2], length.out = 7)
