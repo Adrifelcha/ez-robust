@@ -1,7 +1,7 @@
 # Function to plot Bayes Factors as jittered dots across beta levels
-plot_BF_jitter <- function(resultsFile = NULL, show_x_axis = TRUE, 
-show_y_axis = TRUE, output_dir = NULL) {
-
+plot_BF_jitter <- function(resultsFile = NULL, output_dir = NULL, 
+                           show_x_axis = TRUE, show_y_axis = TRUE, bty = "n",
+                           line = -1, y_range = NULL) {
   # Load results file
   load(resultsFile)
 
@@ -19,8 +19,9 @@ show_y_axis = TRUE, output_dir = NULL) {
   # Plotting settings
   spacing <- 2.5  # Space between beta levels
   xlim <- c((spacing/2), length(beta_levels) * spacing + (spacing/2))
-  y_range <- range(log_bf[!is.infinite(log_bf)])
-  n_inf <- sum(is.infinite(log_bf))
+  if (is.null(y_range)) {
+    y_range <- range(log_bf[!is.infinite(log_bf)])
+  }
 
   # Extend y-range slightly for better visualization
   y_range <- y_range + c(-0.05, 0.05) * diff(y_range)
@@ -45,7 +46,7 @@ show_y_axis = TRUE, output_dir = NULL) {
   }
   
   # Set up the plotting area
-  plot(NA, NA, xlim = xlim, ylim = c(y_range[1], y_range[2] + 0.5), ann = F, bty = "n", axes = F)
+  plot(NA, NA, xlim = xlim, ylim = c(y_range[1], y_range[2] + 0.5), ann = F, bty = bty, axes = F)
   
   # Add background polygons for negative and positive regions
   # Negative region (dark gray)
@@ -60,17 +61,17 @@ show_y_axis = TRUE, output_dir = NULL) {
   
   # Add axes
   if (show_x_axis) {
-    axis(1, at = seq(1, length(beta_levels)) * spacing, labels = beta_levels, line = -1)
+    axis(1, at = seq(1, length(beta_levels)) * spacing, labels = beta_levels, line = line)
   }
   if (show_y_axis) {
     y_axis <- seq(y_range[1], y_range[2], length.out = 7)
     # Draw axis without labels first
-    axis(2, at = c(y_axis, y_range[2] + 0.5), labels = FALSE, las = 2, line = -1)
+    axis(2, at = c(y_axis, y_range[2] + 0.5), labels = FALSE, las = 2, line = line)
     
     # Add labels manually with different colors
-    text(par("usr")[1] - 0.2, y_axis, labels = sprintf("%.1f", y_axis), 
+    text(par("usr")[1] - 0.33, y_axis, labels = sprintf("%.1f", y_axis), 
          las = 2, col = "black", xpd = TRUE)
-    text(par("usr")[1] - 0.2, y_range[2] + 0.5, labels = "Inf", 
+    text(par("usr")[1] - 0.33, y_range[2] + 0.5, labels = "Inf", 
          las = 2, col = "red", xpd = TRUE)
   }
   
@@ -115,16 +116,10 @@ show_y_axis = TRUE, output_dir = NULL) {
   }
   
   # Add reference line at log(BF) = 0
-  abline(h = 0, col = "red", lwd = 2, lty = 2)
+  segments(xlim[1], 0, xlim[2], 0, col = "red", lwd = 2, lty = 2)
   
   if (!is.null(output_dir)) {
     dev.off()
     cat("Bayes Factor jitter plot saved to:", pdfFile, "\n")
   }
 }
-
-# Example usage:
-resultsFile <- here("output", "simStudy_results", "EZ_clean", "sim_P20T20_ez-Clean.RData")
-output_dir <- here("output", "figures_BayesFactors", "EZ_clean")
-plot_BF_jitter(resultsFile = resultsFile, output_dir = output_dir)
-
