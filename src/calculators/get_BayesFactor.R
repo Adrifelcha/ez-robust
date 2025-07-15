@@ -1,9 +1,20 @@
 # Script to compute Bayes Factors against Beta = 0
 ###################################################
-
 # Function to compute Bayes Factors using ROPE approach
 # (Same as in our paper)
-compute_BF_ROPE <- function(true_betas, chains, epsilon = 0.1) {
+compute_BF_ROPE <- function(true_betas, chains, epsilon = 0.05) {
+  
+  # First, try to clean the chains if needed
+  cleaned_result <- diagnose_and_clean_chains(chains, true_betas)
+  
+  if (is.list(cleaned_result) && "chains" %in% names(cleaned_result)) {
+    # Cleaned result contains both chains and true_betas
+    chains <- cleaned_result$chains
+    true_betas <- cleaned_result$true_betas
+  } else {
+    # Cleaned result is just the chains
+    chains <- cleaned_result
+  }
   
   # Get unique beta levels
   beta_levels <- sort(unique(true_betas))
@@ -14,6 +25,7 @@ compute_BF_ROPE <- function(true_betas, chains, epsilon = 0.1) {
   # Initialize results as data frame
   results <- data.frame(
     true_beta = numeric(length(chains)),
+    mean_posterior = numeric(length(chains)),
     post_mass_rope = numeric(length(chains)),
     log_bayes_factor = numeric(length(chains)),
     bayes_factor = numeric(length(chains))
@@ -22,6 +34,19 @@ compute_BF_ROPE <- function(true_betas, chains, epsilon = 0.1) {
   # Compute Bayes Factor for each chain
   for (i in 1:length(chains)) {
     current_chain <- chains[[i]]
+
+    if(length(current_chain) == 1){
+        current_chain <- chains[i,]
+    }
+
+    current_chain <- as.vector(current_chain)
+    current_chain <- current_chain[!is.na(current_chain)]
+
+    # Get the last 1000 values from the chain
+    if (length(current_chain) > 1000) {
+      current_chain <- current_chain[(length(current_chain) - 999):length(current_chain)]
+    }
+    
     current_true_beta <- true_betas[i]
     
     # Calculate posterior probability mass in ROPE
@@ -36,6 +61,7 @@ compute_BF_ROPE <- function(true_betas, chains, epsilon = 0.1) {
     
     # Store results in data frame
     results$true_beta[i] <- current_true_beta
+    results$mean_posterior[i] <- mean(current_chain)
     results$post_mass_rope[i] <- post_mass
     results$log_bayes_factor[i] <- log_bf
     results$bayes_factor[i] <- exp(log_bf)
