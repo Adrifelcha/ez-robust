@@ -88,7 +88,3 @@ plot_grid <- function(subfolder_path, output_dir, plot_type = NULL, y_range = NU
     dev.copy(pdf, file.path(output_dir, output_filename), width = 12, height = 12)
     dev.off()
 }
-
-
-plot_grid(subfolder_path = folder_path, output_dir = output_dir,
-          plot_type = "Betas", y_range = y_range)
