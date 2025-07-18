@@ -53,52 +53,64 @@ process_sim_data_by_cell <- function(seed_dir, output_dir) {
               for(i in seq_along(all_seed_files)){
                   seed_file <- all_seed_files[i]
                   temp_env_seed <- new.env()
-                  load(seed_file, envir = temp_env_seed)
-                  seed_output <- get("output", envir = temp_env_seed)
-                
-                # We check the dataframes for all effects
-                effects_in_seed <- setdiff(names(seed_output), c("reps", "settings"))
-                for(effect in effects_in_seed){
+                  
+                  load_successful <- FALSE
+                  tryCatch({
+                    load(seed_file, envir = temp_env_seed)
+                    load_successful <- TRUE
+                  }, error = function(e) {
+                    cat(paste("\nCould not load file:", seed_file, "- skipping.\n"))
+                  })
+                  
+                  if (load_successful) {
+                    seed_output <- get("output", envir = temp_env_seed)
+                  
+                    # We check the dataframes for all effects
+                    effects_in_seed <- setdiff(names(seed_output), c("reps", "settings"))
+                    for(effect in effects_in_seed){
 
-                    effect_df <- seed_output[[effect]]
-                    # Verify that we have results for this condition and effect
-                    
-                    if(condition %in% colnames(effect_df)) {
-                      these_results <- effect_df[,condition]
-                      
-                      if (!is.null(these_results) && length(these_results) > 0) {
-                        # The actual list of all PxT results is the first (and only) element.
-                        matching_results <- Filter(function(x) x$p == p && x$t == t, these_results)
+                        effect_df <- seed_output[[effect]]
+                        # Verify that we have results for this condition and effect
                         
-                        # Extract the rhats, true values, mean estimates, and std estimates for this cell design
-                        these_rhats <- t(sapply(matching_results, function(x) x$rhats))              
-                        rhats_matrix <- rbind(rhats_matrix, these_rhats[,param_names])
-                        these_truevals <- t(sapply(matching_results, function(x) x$true.values))              
-                        true_values_matrix <- rbind(true_values_matrix, these_truevals[,param_names])
-                        these_estimates <- t(sapply(matching_results, function(x) x$mean.estimates))              
-                        mean_estimates_matrix <- rbind(mean_estimates_matrix, these_estimates[,param_names])
-                        these_std <- t(sapply(matching_results, function(x) x$std.estimates))              
-                        std_estimates_matrix <- rbind(std_estimates_matrix, these_std[,param_names])
-                        these_CI <- t(sapply(matching_results, function(x) x$credInterval))
-                        credInterval_matrix <- rbind(credInterval_matrix, these_CI[,param_names])
-                                                    
-                        these_betas <- t(sapply(matching_results, function(x) x$beta_chains))
-                        these_betas <- diagnose_and_clean_chains(these_betas, these_truevals[,"betaweight"], show_message = FALSE)
-                        beta_chains_matrix <- c(beta_chains_matrix, these_betas)
-                        current_summary <- data.frame("seed" = sapply(matching_results, function(x) x$seed),
-                                                    "jagsTime" = c(t(sapply(matching_results, function(x) x$jagsTime))),
-                                                    "nIter" = c(t(sapply(matching_results, function(x) x$nIter))),
-                                                    "nBurnin" = c(t(sapply(matching_results, function(x) x$nBurnin))),
-                                                    "nThin" = c(t(sapply(matching_results, function(x) x$nThin))),
-                                                    "bad_rhats" = c(t(sapply(matching_results, function(x) x$bad_rhat_count))))
-                        summary_matrix <- rbind(summary_matrix, current_summary)
-                      }
+                        if(condition %in% colnames(effect_df)) {
+                          these_results <- effect_df[,condition]
+                          
+                          if (!is.null(these_results) && length(these_results) > 0) {
+                            # The actual list of all PxT results is the first (and only) element.
+                            matching_results <- Filter(function(x) x$p == p && x$t == t, these_results)
+                            
+                            # Extract the rhats, true values, mean estimates, and std estimates for this cell design
+                            these_rhats <- t(sapply(matching_results, function(x) x$rhats))              
+                            rhats_matrix <- rbind(rhats_matrix, these_rhats[,param_names])
+                            these_truevals <- t(sapply(matching_results, function(x) x$true.values))              
+                            true_values_matrix <- rbind(true_values_matrix, these_truevals[,param_names])
+                            these_estimates <- t(sapply(matching_results, function(x) x$mean.estimates))              
+                            mean_estimates_matrix <- rbind(mean_estimates_matrix, these_estimates[,param_names])
+                            these_std <- t(sapply(matching_results, function(x) x$std.estimates))              
+                            std_estimates_matrix <- rbind(std_estimates_matrix, these_std[,param_names])
+                            these_CI <- t(sapply(matching_results, function(x) x$credInterval))
+                            credInterval_matrix <- rbind(credInterval_matrix, these_CI[,param_names])
+                                                        
+                            these_betas <- t(sapply(matching_results, function(x) x$beta_chains))
+                            these_betas <- diagnose_and_clean_chains(these_betas, these_truevals[,"betaweight"], show_message = FALSE)
+                            beta_chains_matrix <- c(beta_chains_matrix, these_betas)
+                            current_summary <- data.frame("seed" = sapply(matching_results, function(x) x$seed),
+                                                        "jagsTime" = c(t(sapply(matching_results, function(x) x$jagsTime))),
+                                                        "nIter" = c(t(sapply(matching_results, function(x) x$nIter))),
+                                                        "nBurnin" = c(t(sapply(matching_results, function(x) x$nBurnin))),
+                                                        "nThin" = c(t(sapply(matching_results, function(x) x$nThin))),
+                                                        "bad_rhats" = c(t(sapply(matching_results, function(x) x$bad_rhat_count))))
+                            summary_matrix <- rbind(summary_matrix, current_summary)
+                          }
+                        }
                     }
-                }
-                rm(temp_env_seed, seed_output) # Clean up memory
-                
-                # Update the progress bar
-                setTxtProgressBar(progress_bar, i)
+                    rm(temp_env_seed, seed_output) # Clean up memory
+                  } else {
+                    rm(temp_env_seed)
+                  }
+
+                  # Update the progress bar
+                  setTxtProgressBar(progress_bar, i)
               }
               
               # Close the progress bar
