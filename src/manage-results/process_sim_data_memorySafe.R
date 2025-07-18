@@ -104,7 +104,7 @@ process_sim_data_by_cell <- function(seed_dir, output_dir) {
               # Close the progress bar
               close(progress_bar)
                             
-              cat("    -> Found", length(cell_results), "matching results across seeds. Collating and saving...\n")
+              cat("    -> Found", nrow(rhats_matrix), "matching results across seeds. Collating and saving...\n")
                             
               simStudy_Beta <- list("true" = true_values_matrix,
                                     "estimates" = mean_estimates_matrix,
@@ -114,7 +114,7 @@ process_sim_data_by_cell <- function(seed_dir, output_dir) {
                                     "beta_chains" = beta_chains_matrix,                                    
                                     "summary" = summary_matrix)
             
-              subCell_ID <- name_subCell_ID(subCell_name = condition_name)
+              subCell_ID <- name_subCell_ID(subCell_name = condition)
               outputFile <- name_simStudyCell(nTrials = t, nParticipants = p, nDatasets = n_seeds, 
                                               data_type = subCell_ID$data_type, 
                                               ez_model = subCell_ID$EZ_model, output.folder = target_folder)
