@@ -87,7 +87,10 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
         if (plot_by == "condition") {
           plot_cell_by_condition(auc_df, conditions, condition_labels, y_range, show_x_axis, show_y_axis, show_legend)
         } else {
-          plot_cell_by_beta(auc_df, conditions, condition_labels, y_range, show_x_axis, show_y_axis, show_legend)
+          highlight_cell <- ifelse(as.numeric(p_level) * as.numeric(t_level) == 6400, 
+                                   TRUE, FALSE)
+          plot_cell_by_beta(auc_df, conditions, condition_labels, y_range, show_x_axis, show_y_axis, show_legend,
+                            highlight_cell)
         }
         
       } else {
@@ -96,16 +99,16 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
       
       # Add cell labels
       if (t_level == max(t_levels)) {
-        mtext(paste("P =", p_level), side = 3, line = 1, cex = 1.5, font = 2)
+        mtext(paste("P =", p_level), side = 3, line = 0.5, cex = 2, font = 2)
       }
       if (p_level == max(p_levels)) {
-        mtext(paste("T =", t_level), side = 4, line = 1, cex = 1.5, font = 2, las = 0)
+        mtext(paste("T =", t_level), side = 4, line = 1.5, cex = 2, font = 2, las = 0)
       }
     }
   }
   
   # Add common outer labels
-  mtext("Area Under Curve (AUC)", side = 2, line = 2.5, cex = 1.75, outer = TRUE)
+  mtext("Area Under Curve (AUC)", side = 2, line = 2.5, cex = 2, outer = TRUE)
 
   dev.off()
   cat("AUC grid plot saved to:", file.path(output_dir, output_filename), "\n")
@@ -161,17 +164,22 @@ plot_cell_by_condition <- function(auc_df, conditions, condition_labels, y_range
 }
 
 # Helper function to plot a single grid cell with Beta levels on the X-axis
-plot_cell_by_beta <- function(auc_df, conditions, condition_labels, y_range, show_x_axis, show_y_axis, show_legend) {
+plot_cell_by_beta <- function(auc_df, conditions, condition_labels, y_range, show_x_axis, 
+                              show_y_axis, show_legend, highlight_cell = FALSE, highlight_color = "#dedb9c") {
   
   beta_levels <- sort(unique(auc_df$beta))
-  spacing <- 2.5  # Space between distributions
-  last_x_pos <- length(beta_levels) * spacing
-  xlim <- c((spacing/2), last_x_pos + (spacing/2))
-  x_at <- seq(1, length(beta_levels)) * spacing
-
+  offset <- 0.05
+  xlim <- c(min(beta_levels) - offset, max(beta_levels) + offset)
   # Create an empty plot
   plot(NA, NA, xlim = xlim, ylim = y_range, xlab = "", ylab = "", xaxt = "n", yaxt = "n", bty="o")
-  
+
+  if(highlight_cell){
+    # Add colored background using polygon
+    polygon(x = c(xlim[1], xlim[2], xlim[2], xlim[1]), 
+            y = c(y_range[1], y_range[1], y_range[2], y_range[2]), 
+            col = highlight_color, border = NA)
+  }
+
   if (show_y_axis) {
     y_at <- seq(y_range[1], y_range[2], length.out = 6)
     axis(2, at = y_at, round(y_at,1), las = 1) 
@@ -179,21 +187,23 @@ plot_cell_by_beta <- function(auc_df, conditions, condition_labels, y_range, sho
 
   if (show_x_axis) {
     labels <- sapply(beta_levels, function(x) as.expression(bquote(beta == .(x))))
-    axis(1, at = x_at, labels = labels, line = 1, cex.axis = 1.1)
+    axis(1, at = beta_levels, labels = labels, line = 1, cex.axis = 1.1)
   }
 
   
-  condition_colors <- c("#1f77b4", "#ff7f0e", "#2ca02c", "#d62728")
-  
+  condition_colors <- c("#129412", "#d3540b", "#de77f3", "#160f0fea")
+  widths <- c(5,5,4,3)
+  styles <- c(1,3,2,4)
+  points <- c(19,17,15,18)
+
   # Plot lines and points for each condition
   for (i in seq_along(conditions)) {
     condition_val <- conditions[i]
     subset_df <- auc_df[auc_df$condition == condition_val, ]
     ordered_subset <- subset_df[order(subset_df$beta), ]
     
-    x_pos <- x_at[order(ordered_subset$beta)]
-    lines(x_pos, ordered_subset$auc, col = condition_colors[i], lwd = 2)
-    points(x_pos, ordered_subset$auc, col = condition_colors[i], pch = 19, cex = 1.2)
+    lines(ordered_subset$beta, ordered_subset$auc, col = condition_colors[i], lwd = widths[i], lty = styles[i])
+    points(ordered_subset$beta, ordered_subset$auc, col = condition_colors[i], pch = points[i], cex = 2)
   }
   
   # Add legend to the top-right plot
@@ -201,6 +211,6 @@ plot_cell_by_beta <- function(auc_df, conditions, condition_labels, y_range, sho
     legend("bottomright",
            legend = condition_labels,
            col = condition_colors,
-           lwd = 2, pch = 19, bty = "n", cex = 1.2)
+           lwd = 2, pch = 19, bty = "n", cex = 1.5)
   }
 }
