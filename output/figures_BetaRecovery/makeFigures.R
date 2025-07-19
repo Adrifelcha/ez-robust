@@ -6,7 +6,7 @@ subfolders <- c("EZ_clean", "EZ_contaminated", "EZRobust_clean", "EZRobust_conta
 # Loop through each subfolder
 for (subfolder in subfolders) {
   # Get the full path to the subfolder
-  folder_path <- here("output", "simStudy_results", subfolder)
+  folder_path <- here("output", "RData_simStudy_results", subfolder)
   # Create output directory based on subfolder
   output_dir <- here("output", "figures_BetaRecovery", subfolder)
   # Create the grid of plots
