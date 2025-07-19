@@ -90,10 +90,11 @@ process_sim_data_by_cell <- function(seed_dir, output_dir) {
                             std_estimates_matrix <- rbind(std_estimates_matrix, these_std[,param_names])
                             these_CI <- t(sapply(matching_results, function(x) x$credInterval))
                             credInterval_matrix <- rbind(credInterval_matrix, these_CI[,param_names])
-                                                        
+
                             these_betas <- t(sapply(matching_results, function(x) x$beta_chains))
-                            these_betas <- diagnose_and_clean_chains(these_betas, these_truevals[,"betaweight"], show_message = FALSE)
-                            beta_chains_matrix <- c(beta_chains_matrix, these_betas)
+                            list_of_chains <- split(these_betas, 1:nrow(these_betas))
+                            beta_chains_row <- matrix(list_of_chains, nrow = 1)
+                            beta_chains_matrix <- cbind(beta_chains_matrix, beta_chains_row)
                             current_summary <- data.frame("seed" = sapply(matching_results, function(x) x$seed),
                                                         "jagsTime" = c(t(sapply(matching_results, function(x) x$jagsTime))),
                                                         "nIter" = c(t(sapply(matching_results, function(x) x$nIter))),
