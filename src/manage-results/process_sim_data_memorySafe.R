@@ -102,7 +102,7 @@ process_sim_data_by_cell <- function(seed_dir, output_dir) {
                             }else{
                                list_of_chains <- split(getbetas, 1:nrow(getbetas))
                               for(fila in 1:nrow(getbetas)){
-                                list_of_chains[[fila]] <- matrix(list_of_chains[[fila]], ncol = output$settings$n.chains)
+                                list_of_chains[[fila]] <- matrix(list_of_chains[[fila]], ncol = seed_output$settings$n.chains)
                               }                            
                               beta_chains_row <- matrix(list_of_chains, nrow = 1)                                  
                             }
