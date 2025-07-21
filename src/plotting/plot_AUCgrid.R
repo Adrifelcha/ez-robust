@@ -182,7 +182,7 @@ plot_cell_by_beta <- function(auc_df, conditions, condition_labels, y_range, sho
 
   if (show_y_axis) {
     y_at <- seq(y_range[1], y_range[2], length.out = 6)
-    axis(2, at = y_at, round(y_at,1), las = 1, cex = 1.5) 
+    axis(2, at = y_at, round(y_at,1), las = 1, cex.axis = 1.5) 
   }
 
   if (show_x_axis) {
