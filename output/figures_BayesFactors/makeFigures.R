@@ -3,12 +3,12 @@ source(here("src", "load_allFunctions.R"))
 load_allCustomFunctions()
 
 # Define the four subfolders
-subfolders <- c("EZ_clean", "EZ_contaminated", "EZRobust_clean", "EZRobust_contaminated")
+subfolders <- c("EZ_contaminated", "EZ_clean", "EZRobust_clean", "EZRobust_contaminated")
 
 # Loop through each subfolder
 for (subfolder in subfolders) {
     # Get the full path to the subfolder
-    folder_path <- here("output", "simStudy_results", subfolder)
+    folder_path <- here("output", "RData_simStudy_results", subfolder)
     # Create output directory based on subfolder
     output_dir <- here("output", "figures_BayesFactors", subfolder)
     # Create the grid of plots
