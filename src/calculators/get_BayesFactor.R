@@ -33,7 +33,7 @@ compute_BF_ROPE <- function(true_betas, chains, epsilon = 0.05) {
   
   # Compute Bayes Factor for each chain
   for (i in 1:length(chains)) {
-    current_chain <- chains[[i]]
+    current_chain <- unlist(chains[[i]])
 
     if(length(current_chain) == 1){
         current_chain <- chains[i,]
@@ -42,11 +42,6 @@ compute_BF_ROPE <- function(true_betas, chains, epsilon = 0.05) {
     current_chain <- as.vector(current_chain)
     current_chain <- current_chain[!is.na(current_chain)]
 
-    # Get the last 1000 values from the chain
-    if (length(current_chain) > 1000) {
-      current_chain <- current_chain[(length(current_chain) - 999):length(current_chain)]
-    }
-    
     current_true_beta <- true_betas[i]
     
     # Calculate posterior probability mass in ROPE
