@@ -48,6 +48,7 @@ process_sim_data_by_cell <- function(seed_dir, output_dir) {
               credInterval_matrix <- c()                                          
               beta_chains_matrix <- c()
               summary_matrix <- c()
+              seed_names <- c()
 
               # Loop through every single seed file to find data for this cell
               for(i in seq_along(all_seed_files)){
@@ -62,7 +63,7 @@ process_sim_data_by_cell <- function(seed_dir, output_dir) {
                     cat(paste("\nCould not load file:", seed_file, "- skipping.\n"))
                   })
                   
-                  if (load_successful) {
+                  if(load_successful){
                     seed_output <- get("output", envir = temp_env_seed)
                   
                     # We check the dataframes for all effects
@@ -78,23 +79,34 @@ process_sim_data_by_cell <- function(seed_dir, output_dir) {
                           if (!is.null(these_results) && length(these_results) > 0) {
                             # The actual list of all PxT results is the first (and only) element.
                             matching_results <- Filter(function(x) x$p == p && x$t == t, these_results)
-                            
-                            # Extract the rhats, true values, mean estimates, and std estimates for this cell design
+
+                            # Extract rhats
                             these_rhats <- t(sapply(matching_results, function(x) x$rhats))              
                             rhats_matrix <- rbind(rhats_matrix, these_rhats[,param_names])
+                            # Extract true values
                             these_truevals <- t(sapply(matching_results, function(x) x$true.values))              
                             true_values_matrix <- rbind(true_values_matrix, these_truevals[,param_names])
+                            # Extract mean estimates
                             these_estimates <- t(sapply(matching_results, function(x) x$mean.estimates))              
                             mean_estimates_matrix <- rbind(mean_estimates_matrix, these_estimates[,param_names])
+                            # Extract std estimates
                             these_std <- t(sapply(matching_results, function(x) x$std.estimates))              
                             std_estimates_matrix <- rbind(std_estimates_matrix, these_std[,param_names])
+                            # Extract credible intervals
                             these_CI <- t(sapply(matching_results, function(x) x$credInterval))
                             credInterval_matrix <- rbind(credInterval_matrix, these_CI[,param_names])
+                            # Extract beta chains
+                            getbetas <- t(sapply(matching_results, function(x) x$beta_chains))
+                            if(nrow(getbetas) == 1){
+                               beta_chains_matrix <- cbind(beta_chains_matrix, getbetas)
+                            }else{
+                               list_of_chains <- split(getbetas, 1:nrow(getbetas))
+                              for(fila in 1:nrow(getbetas)){
+                                list_of_chains[[fila]] <- matrix(list_of_chains[[fila]], ncol = output$settings$n.chains)
+                              }                            
+                              beta_chains_row <- matrix(list_of_chains, nrow = 1)                                  
+                            }
 
-                            these_betas <- t(sapply(matching_results, function(x) x$beta_chains))
-                            list_of_chains <- split(these_betas, 1:nrow(these_betas))
-                            beta_chains_row <- matrix(list_of_chains, nrow = 1)
-                            beta_chains_matrix <- cbind(beta_chains_matrix, beta_chains_row)
                             current_summary <- data.frame("seed" = sapply(matching_results, function(x) x$seed),
                                                         "jagsTime" = c(t(sapply(matching_results, function(x) x$jagsTime))),
                                                         "nIter" = c(t(sapply(matching_results, function(x) x$nIter))),
