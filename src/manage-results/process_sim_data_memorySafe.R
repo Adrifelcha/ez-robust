@@ -105,7 +105,7 @@ process_sim_data_by_cell <- function(seed_dir, output_dir) {
                                 list_of_chains[[fila]] <- matrix(list_of_chains[[fila]], ncol = seed_output$settings$n.chains)
                               }                            
                               beta_chains_row <- matrix(list_of_chains, nrow = 1)       
-                              beta_chains_matrix <- rbind(beta_chains_matrix, beta_chains_row)
+                              beta_chains_matrix <- cbind(beta_chains_matrix, beta_chains_row)
                             }
 
                             current_summary <- data.frame("seed" = sapply(matching_results, function(x) x$seed),
