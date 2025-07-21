@@ -97,14 +97,15 @@ process_sim_data_by_cell <- function(seed_dir, output_dir) {
                             credInterval_matrix <- rbind(credInterval_matrix, these_CI[,param_names])
                             # Extract beta chains
                             getbetas <- t(sapply(matching_results, function(x) x$beta_chains))
-                            if(nrow(getbetas) == 1){
+                            if(ncol(getbetas) < 4){
                                beta_chains_matrix <- cbind(beta_chains_matrix, getbetas)
                             }else{
                                list_of_chains <- split(getbetas, 1:nrow(getbetas))
                               for(fila in 1:nrow(getbetas)){
                                 list_of_chains[[fila]] <- matrix(list_of_chains[[fila]], ncol = seed_output$settings$n.chains)
                               }                            
-                              beta_chains_row <- matrix(list_of_chains, nrow = 1)                                  
+                              beta_chains_row <- matrix(list_of_chains, nrow = 1)       
+                              beta_chains_matrix <- rbind(beta_chains_matrix, beta_chains_row)
                             }
 
                             current_summary <- data.frame("seed" = sapply(matching_results, function(x) x$seed),
