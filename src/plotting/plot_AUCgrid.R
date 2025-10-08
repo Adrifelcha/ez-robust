@@ -82,11 +82,12 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
         auc_df <- do.call(rbind, auc_data_list)
         show_x_axis <- (t_level == min(t_levels))
         show_y_axis <- (p_level == min(p_levels))
-        show_legend <- (t_level == max(t_levels)) && (p_level == max(p_levels))
         
         if (plot_by == "condition") {
+          show_legend <- (t_level == max(t_levels)) && (p_level == min(p_levels))
           plot_cell_by_condition(auc_df, conditions, condition_labels, y_range, show_x_axis, show_y_axis, show_legend)
         } else {
+          show_legend <- (t_level == max(t_levels)) && (p_level == max(p_levels))
           highlight_cell <- ifelse(as.numeric(p_level) * as.numeric(t_level) == 6400, 
                                    TRUE, FALSE)
           plot_cell_by_beta(auc_df, conditions, condition_labels, y_range, show_x_axis, show_y_axis, show_legend,
@@ -208,7 +209,7 @@ plot_cell_by_beta <- function(auc_df, conditions, condition_labels, y_range, sho
   
   # Add legend to the top-right plot
   if (show_legend) {
-    legend("bottomright",
+    legend("topleft",
            legend = condition_labels,
            col = condition_colors,
            lwd = 2, pch = 19, bty = "n", cex = 1.5)
