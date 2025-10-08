@@ -111,7 +111,7 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
   # Add common outer labels
   mtext("Area Under Curve (AUC)", side = 2, line = 2.8, cex = 2.5, outer = TRUE)
   mtext(expression(paste("Effect size (", beta, ")")),
-        side = 1, line = 3.5, cex = 2.5, outer = TRUE)
+        side = 1, line = 4, cex = 2.5, outer = TRUE)
 
   dev.off()
   cat("AUC grid plot saved to:", file.path(output_dir, output_filename), "\n")
