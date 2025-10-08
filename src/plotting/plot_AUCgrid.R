@@ -13,7 +13,7 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
   
   # Define conditions and labels
   conditions <- c("EZ_clean", "EZ_contaminated", "EZRobust_clean", "EZRobust_contaminated")
-  condition_labels <- c("EZ x Clean", "EZ x Outliers", "Robust x Clean", "Robust x Outliers")
+  condition_labels <- c("EZ x Clean", "EZ x Contaminated", "Robust x Clean", "Robust x Contaminated")
   
   # Infer P and T levels from the first subfolder
   first_condition_path <- file.path(main_dir, conditions[1])
@@ -99,10 +99,10 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
       
       # Add cell labels
       if (t_level == max(t_levels)) {
-        mtext(paste("P =", p_level), side = 3, line = 0.5, cex = 2, font = 2)
+        mtext(paste("P =", p_level), side = 3, line = 0.5, cex = 2.5, font = 2)
       }
       if (p_level == max(p_levels)) {
-        mtext(paste("T =", t_level), side = 4, line = 1.5, cex = 2, font = 2, las = 0)
+        mtext(paste("T =", t_level), side = 4, line = 1.5, cex = 2.5, font = 2, las = 0)
       }
     }
   }
