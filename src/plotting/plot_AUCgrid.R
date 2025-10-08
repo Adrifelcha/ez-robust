@@ -55,7 +55,7 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
   
   # Setup plot layout
   par(mfrow = c(length(t_levels), length(p_levels)),
-      oma = c(4.5, 6, 3, 3), # bottom, left, top, right
+      oma = c(6, 6, 3, 3), # bottom, left, top, right
       mar = c(1, 1.5, 0, 0))
   
   # Loop through each T level (rows) from high to low
@@ -111,7 +111,7 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
   # Add common outer labels
   mtext("Area Under Curve (AUC)", side = 2, line = 2.8, cex = 2.5, outer = TRUE)
   mtext(expression(paste("Effect size (", beta, ")")),
-        side = 2, line = 2.8, cex = 2.5, outer = TRUE)
+        side = 1, line = 2.8, cex = 2.5, outer = TRUE)
 
   dev.off()
   cat("AUC grid plot saved to:", file.path(output_dir, output_filename), "\n")
