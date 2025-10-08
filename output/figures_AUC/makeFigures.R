@@ -12,4 +12,4 @@ plot_AUCgrid(main_dir = main_dir, output_dir = output_dir, plot_by = "beta")
 
 
 # Plot with conditions on the x-axis
-plot_AUCgrid(main_dir = main_dir, output_dir = output_dir, plot_by = "condition")
+#plot_AUCgrid(main_dir = main_dir, output_dir = output_dir, plot_by = "condition")
