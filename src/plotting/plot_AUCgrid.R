@@ -103,7 +103,7 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
         mtext(paste("P =", p_level), side = 3, line = 0.5, cex = 2.5, font = 2)
       }
       if (p_level == max(p_levels)) {
-        mtext(paste("T =", t_level), side = 4, line = 1.75, cex = 2.5, font = 2, las = 0)
+        mtext(paste("T =", t_level), side = 4, line = 1.85, cex = 2.5, font = 2, las = 0)
       }
     }
   }
@@ -111,7 +111,7 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
   # Add common outer labels
   mtext("Area Under Curve (AUC)", side = 2, line = 2.8, cex = 2.5, outer = TRUE)
   mtext(expression(paste("Effect size (", beta, ")")),
-        side = 1, line = 2.8, cex = 2.5, outer = TRUE)
+        side = 1, line = 3.5, cex = 2.5, outer = TRUE)
 
   dev.off()
   cat("AUC grid plot saved to:", file.path(output_dir, output_filename), "\n")
@@ -215,6 +215,6 @@ plot_cell_by_beta <- function(auc_df, conditions, condition_labels, y_range, sho
     legend("topleft",
            legend = condition_labels,
            col = condition_colors,
-           lwd = 2, pch = 19, bty = "n", cex = 1.5)
+           lwd = 2, pch = 19, bty = "n", cex = 1.75)
   }
 }
