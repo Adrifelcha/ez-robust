@@ -55,7 +55,7 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
   
   # Setup plot layout
   par(mfrow = c(length(t_levels), length(p_levels)),
-      oma = c(4, 6, 3, 3), # bottom, left, top, right
+      oma = c(4.5, 6, 3, 3), # bottom, left, top, right
       mar = c(1, 1.5, 0, 0))
   
   # Loop through each T level (rows) from high to low
@@ -87,7 +87,7 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
           show_legend <- (t_level == max(t_levels)) && (p_level == max(p_levels))
           plot_cell_by_condition(auc_df, conditions, condition_labels, y_range, show_x_axis, show_y_axis, show_legend)
         } else {
-          show_legend <- (t_level == max(t_levels)) && (p_level == min(p_levels))
+          show_legend <- (t_level == min(t_levels)) && (p_level == min(p_levels))
           highlight_cell <- ifelse(as.numeric(p_level) * as.numeric(t_level) == 6400, 
                                    TRUE, FALSE)
           plot_cell_by_beta(auc_df, conditions, condition_labels, y_range, show_x_axis, show_y_axis, show_legend,
@@ -103,13 +103,15 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
         mtext(paste("P =", p_level), side = 3, line = 0.5, cex = 2.5, font = 2)
       }
       if (p_level == max(p_levels)) {
-        mtext(paste("T =", t_level), side = 4, line = 1.5, cex = 2.75, font = 2, las = 0)
+        mtext(paste("T =", t_level), side = 4, line = 1.75, cex = 2.5, font = 2, las = 0)
       }
     }
   }
   
   # Add common outer labels
   mtext("Area Under Curve (AUC)", side = 2, line = 2.8, cex = 2.5, outer = TRUE)
+  mtext(expression(paste("Effect size (", beta, ")")),
+        side = 2, line = 2.8, cex = 2.5, outer = TRUE)
 
   dev.off()
   cat("AUC grid plot saved to:", file.path(output_dir, output_filename), "\n")
@@ -187,7 +189,8 @@ plot_cell_by_beta <- function(auc_df, conditions, condition_labels, y_range, sho
   }
 
   if (show_x_axis) {
-    labels <- sapply(beta_levels, function(x) as.expression(bquote(beta == .(x))))
+    #labels <- sapply(beta_levels, function(x) as.expression(bquote(beta == .(x))))
+    labels <- beta_levels
     axis(1, at = beta_levels, labels = labels, line = 1, cex.axis = 2)
   }
 
