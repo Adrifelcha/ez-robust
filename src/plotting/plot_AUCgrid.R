@@ -87,7 +87,8 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
           show_legend <- (t_level == max(t_levels)) && (p_level == max(p_levels))
           plot_cell_by_condition(auc_df, conditions, condition_labels, y_range, show_x_axis, show_y_axis, show_legend)
         } else {
-          show_legend <- (t_level == max(t_levels)) && (p_level == min(p_levels))
+          #show_legend <- (t_level == max(t_levels)) && (p_level == min(p_levels))
+          show_legend <- (as.numeric(t_level) == 80) && (p_level == min(p_levels))
           highlight_cell <- ifelse(as.numeric(p_level) * as.numeric(t_level) == 6400, 
                                    TRUE, FALSE)
           plot_cell_by_beta(auc_df, conditions, condition_labels, y_range, show_x_axis, show_y_axis, show_legend,
