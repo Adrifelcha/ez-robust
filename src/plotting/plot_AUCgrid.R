@@ -215,6 +215,6 @@ plot_cell_by_beta <- function(auc_df, conditions, condition_labels, y_range, sho
     legend("topleft",
            legend = condition_labels,
            col = condition_colors,
-           lwd = 2, pch = 19, bty = "n", cex = 1.65)
+           lwd = 2, pch = 19, bty = "n", cex = 1.6)
   }
 }
