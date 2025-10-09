@@ -55,7 +55,7 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
   
   # Setup plot layout
   par(mfrow = c(length(t_levels), length(p_levels)),
-      oma = c(6, 6, 3, 3), # bottom, left, top, right
+      oma = c(7, 7, 3, 3), # bottom, left, top, right
       mar = c(1, 1.5, 0, 0))
   
   # Loop through each T level (rows) from high to low
@@ -110,9 +110,9 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
   }
   
   # Add common outer labels
-  mtext("Area Under Curve (AUC)", side = 2, line = 2.8, cex = 2.5, outer = TRUE)
+  mtext("Area Under Curve (AUC)", side = 2, line = 3.8, cex = 2.5, outer = TRUE)
   mtext(expression(paste("Effect size (", beta, ")")),
-        side = 1, line = 4.7, cex = 2.5, outer = TRUE)
+        side = 1, line = 5.7, cex = 2.5, outer = TRUE)
 
   dev.off()
   cat("AUC grid plot saved to:", file.path(output_dir, output_filename), "\n")
@@ -186,13 +186,13 @@ plot_cell_by_beta <- function(auc_df, conditions, condition_labels, y_range, sho
 
   if (show_y_axis) {
     y_at <- seq(y_range[1], y_range[2], length.out = 6)
-    axis(2, at = y_at, round(y_at,1), las = 1, cex.axis = 2) 
+    axis(2, at = y_at, round(y_at,1), las = 1, cex.axis = 2.5) 
   }
 
   if (show_x_axis) {
     #labels <- sapply(beta_levels, function(x) as.expression(bquote(beta == .(x))))
     labels <- beta_levels
-    axis(1, at = beta_levels, labels = labels, line = 1, cex.axis = 2)
+    axis(1, at = beta_levels, labels = labels, line = 1, cex.axis = 2.5)
   }
 
   
