@@ -197,7 +197,7 @@ plot_cell_by_beta <- function(auc_df, conditions, condition_labels, y_range, sho
   
   condition_colors <- c("#d3540b", "#160f0fea", "#129412", "#de77f3")
   widths <- c(5,5,4,3)
-  styles <- c(1,3,2,4)
+  styles <- c(2,1,3,4)
   points <- c(19,17,15,18)
 
   # Plot lines and points for each condition
