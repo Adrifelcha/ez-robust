@@ -12,8 +12,8 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
   }
   
   # Define conditions and labels
-  conditions <- c("EZ_clean", "EZ_contaminated", "EZRobust_clean", "EZRobust_contaminated")
-  condition_labels <- c("EZ x Clean", "EZ x Contaminated", "Robust x Clean", "Robust x Contaminated")
+  conditions <- c("EZ_contaminated", "EZRobust_contaminated", "EZ_clean", "EZRobust_clean")
+  condition_labels <- c("EZ x Contaminated", "Robust x Contaminated", "EZ x Clean","Robust x Clean")
   
   # Infer P and T levels from the first subfolder
   first_condition_path <- file.path(main_dir, conditions[1])
@@ -195,7 +195,7 @@ plot_cell_by_beta <- function(auc_df, conditions, condition_labels, y_range, sho
   }
 
   
-  condition_colors <- c("#129412", "#d3540b", "#de77f3", "#160f0fea")
+  condition_colors <- c("#d3540b", "#160f0fea", "#129412", "#de77f3")
   widths <- c(5,5,4,3)
   styles <- c(1,3,2,4)
   points <- c(19,17,15,18)
@@ -215,6 +215,6 @@ plot_cell_by_beta <- function(auc_df, conditions, condition_labels, y_range, sho
     legend("topleft",
            legend = condition_labels,
            col = condition_colors,
-           lwd = 2, pch = 19, bty = "n", cex = 1.6)
+           lwd = 2, pch = 19, bty = "n", cex = 1.7)
   }
 }
