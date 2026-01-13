@@ -104,7 +104,7 @@ my.cluster  <-  makeCluster(cores[1]-4)
 
 registerDoParallel(cl = my.cluster)
 # Then modify your foreach call to use this combine function
-resultado <- foreach(seed = 15:1000, 
+resultado <- foreach(seed = 1:1000, 
                     .errorhandling = "pass",
                     .combine = combine_results
                     ) %dopar% {
