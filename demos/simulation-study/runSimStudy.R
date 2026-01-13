@@ -7,7 +7,7 @@ forceRun = TRUE
 ##########################################################
 ######## Load required R packages for parallel processing
 # Set working directory to repo root (this script is in demos/simulation-study/)
-setwd(file.path(dirname(rstudioapi::getSourceEditorContext()$path), "..", ".."))
+setwd("../../")
 library(here)
 library(foreach)
 library(doParallel)
