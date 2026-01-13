@@ -18,7 +18,7 @@ load_allCustomFunctions()
 # SIMULATION SETTINGS
 ##########################################################
 # Create output directory if it doesn't exist
-output_dir <- here("demos", "simulation-study", "samples")
+output_dir <- here("demos", "simulation-study", "samplesSummStats")
 log_dir <- here("demos", "simulation-study", "logs")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(log_dir, recursive = TRUE, showWarnings = FALSE)
