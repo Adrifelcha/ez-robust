@@ -186,7 +186,8 @@ runJAGS <- function(EZ_stats, EZmodel, modelType, withinSubject, this.seed,
   names(credInterval) <- jagsParameters
   
   # Step 5: Return comprehensive results object
-  return(list("beta_chains" = JAGS_extractSamples("betaweight", samples),
+  return(list("summStats" = EZ_stats,
+              "beta_chains" = JAGS_extractSamples("betaweight", samples),
               "estimates" = estimates,       # Posterior means
               "sd" = error,                  # Posterior standard deviations
               "credInterval" = credInterval, # 95% credible intervals
