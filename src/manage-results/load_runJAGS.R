@@ -5,6 +5,7 @@ jags_localResults <- function(runJags_i, EZ_variation, data_variation, true_para
                          ez_type = EZ_variation,                                           # Design type                         
                          data_type = data_variation,
                          rhats = runJags_i$rhats,      # Convergence diagnostics
+                         summStats = runJags_i$summStats, # Summary statistics
                          true.values = true_parameter_set,      # True parameter values
                          beta_chains = runJags_i$beta_chains,     # Beta chains
                          mean.estimates = runJags_i$estimates,         # Posterior means
