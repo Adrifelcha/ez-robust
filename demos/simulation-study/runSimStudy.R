@@ -7,7 +7,6 @@ forceRun = TRUE
 ##########################################################
 ######## Load required R packages for parallel processing
 # Set working directory to repo root (this script is in demos/simulation-study/)
-setwd("../../")
 library(here)
 library(foreach)
 library(doParallel)
