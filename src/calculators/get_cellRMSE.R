@@ -61,16 +61,19 @@ get_cellRMSE <- function(resultsFile = NULL, parameter = "bound_mean") {
                 true_valid <- true_subset[valid_indices]
                 est_valid <- est_subset[valid_indices]
                 
+                error <- est_valid - true_valid
+                
                 # Calculate bias: mean(estimates - true_values)
-                bias_by_beta[i] <- mean(est_valid - true_valid)
+                bias_by_beta[i] <- mean(error)
                 
                 # Calculate variance: var(estimates)
-                variance_by_beta[i] <- var(est_valid)
+                variance_by_beta[i] <- mean( (error - mean(error))^2 )
                 
                 # Calculate RMSE: sqrt(mean((estimates - true_values)^2))
                 # Note: MSE = Bias² + Variance, so RMSE = sqrt(MSE)
-                squared_errors <- (true_valid - est_valid)^2
-                rmse_by_beta[i] <- sqrt(mean(squared_errors))
+                squared_errors <- error^2
+                mean_squared_errors <- mean(squared_errors)
+                rmse_by_beta[i] <- sqrt(mean_squared_errors)
             } else {
                 # If there are no valid true and estimated values, set all to NA
                 rmse_by_beta[i] <- NA
