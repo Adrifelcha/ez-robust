@@ -39,7 +39,7 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
           if (length(file_path_list) > 0) {
             roc_data <- get_cellROCs(resultsFile = file_path_list[1])
             for (beta_level_char in names(roc_data$tpr_list)) {
-              auc <- compute_AUC(roc_data$fpr, roc_data$tpr_list[[beta_level_char]])
+              auc <- get_AUC(roc_data$fpr, roc_data$tpr_list[[beta_level_char]])
               if (auc < min_auc) min_auc <- auc
             }
           }
@@ -70,7 +70,7 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
         if (!is.na(file_path)) {
           roc_data <- get_cellROCs(resultsFile = file_path)
           for (beta_level_char in names(roc_data$tpr_list)) {
-            auc <- compute_AUC(roc_data$fpr, roc_data$tpr_list[[beta_level_char]])
+            auc <- get_AUC(roc_data$fpr, roc_data$tpr_list[[beta_level_char]])
             auc_data_list[[length(auc_data_list) + 1]] <- data.frame(
               condition = condition, beta = as.numeric(beta_level_char), auc = auc, stringsAsFactors = FALSE)
           }
