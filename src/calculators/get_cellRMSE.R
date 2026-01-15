@@ -1,4 +1,6 @@
-# Custom Function to compute RMSE for parameter estimation
+# Custom Function to compute RMSE, bias, and variance for parameter estimation
+#   MSE = Bias² + Variance
+#   RMSE = sqrt(MSE)
 # Inputs:
 # - resultsFile: the path to the results file
 #   Ex: "output/RData_simStudy_results/EZ_clean/sim_P20T20_ez-Clean.RData"
@@ -9,6 +11,8 @@
 #   - parameter: the parameter to compute RMSE for
 #   - beta_levels: the beta levels used in the simulation study
 #   - rmse_by_beta: a vector of RMSEs for each beta level
+#   - bias_by_beta: a vector of bias values for each beta level (mean(estimates - true))
+#   - variance_by_beta: a vector of variance values for each beta level (var(estimates))
 ###################################################################
 
 get_cellRMSE <- function(resultsFile = NULL, parameter = "bound_mean") {
@@ -28,13 +32,17 @@ get_cellRMSE <- function(resultsFile = NULL, parameter = "bound_mean") {
     beta_levels <- sort(unique(true_betas))
     
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # Calculate RMSE for each beta level
+    # Calculate RMSE, bias, and variance for each beta level
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # Start empty vector to store RMSEs for each beta level
+    # Start empty vectors to store metrics for each beta level
     rmse_by_beta <- rep(NA, length(beta_levels))
+    bias_by_beta <- rep(NA, length(beta_levels))
+    variance_by_beta <- rep(NA, length(beta_levels))
     names(rmse_by_beta) <- as.character(beta_levels)
+    names(bias_by_beta) <- as.character(beta_levels)
+    names(variance_by_beta) <- as.character(beta_levels)
     
-    # Fill the RMSE vector with the RMSE for each beta level
+    # Fill the vectors with metrics for each beta level
     for (i in seq_along(beta_levels)) {        
             # Extract the current beta level
             beta_val <- beta_levels[i]
@@ -46,23 +54,37 @@ get_cellRMSE <- function(resultsFile = NULL, parameter = "bound_mean") {
             true_subset <- true_values[beta_indices]
             est_subset <- estimates[beta_indices]
             
-            # Calculate RMSE for this beta level, ignoring NA values
             # Check available true and estimated values
             valid_indices <- !is.na(true_subset) & !is.na(est_subset)
             if (sum(valid_indices) > 0) {
-                # If there are at least one valid true and estimated value, calculate RMSE
-                squared_errors <- (true_subset[valid_indices] - est_subset[valid_indices])^2
+                # Extract valid values
+                true_valid <- true_subset[valid_indices]
+                est_valid <- est_subset[valid_indices]
+                
+                # Calculate bias: mean(estimates - true_values)
+                bias_by_beta[i] <- mean(est_valid - true_valid)
+                
+                # Calculate variance: var(estimates)
+                variance_by_beta[i] <- var(est_valid)
+                
+                # Calculate RMSE: sqrt(mean((estimates - true_values)^2))
+                # Note: MSE = Bias² + Variance, so RMSE = sqrt(MSE)
+                squared_errors <- (true_valid - est_valid)^2
                 rmse_by_beta[i] <- sqrt(mean(squared_errors))
             } else {
-                # If there are no valid true and estimated values, set RMSE to NA
+                # If there are no valid true and estimated values, set all to NA
                 rmse_by_beta[i] <- NA
+                bias_by_beta[i] <- NA
+                variance_by_beta[i] <- NA
             }
     }
     
-    # Return the RMSE data
+    # Return the data
     return(list(parameter = parameter,
                 beta_levels = beta_levels,
-                rmse_by_beta = rmse_by_beta))
+                rmse_by_beta = rmse_by_beta,
+                bias_by_beta = bias_by_beta,
+                variance_by_beta = variance_by_beta))
 }
 
 #resultsFile <- "output/RData_simStudy_results/EZ_clean/sim_P20T20_ez-Clean.RData"
