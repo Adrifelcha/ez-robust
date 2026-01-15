@@ -66,13 +66,13 @@ get_cellRMSE <- function(resultsFile = NULL, parameter = "bound_mean") {
                 
                 error <- est_valid - true_valid
                 
-                # Calculate bias: mean(estimates - true_values)
+                # Calculate bias: mean(estimates - true)
                 bias_by_beta[i] <- mean(error)
                 
-                # Calculate variance: var(estimates)
-                variance_by_beta[i] <- mean( (error - mean(error))^2 )
+                # Calculate variance: var(estimates - true)
+                variance_by_beta[i] <- var(error)
                 
-                # Calculate RMSE: sqrt(mean((estimates - true_values)^2))
+                # Calculate RMSE: sqrt(mean((estimates - true)^2))
                 # Note: MSE = Bias² + Variance, so RMSE = sqrt(MSE)
                 squared_errors <- error^2                
                 mean_squared_errors <- mean(squared_errors)
