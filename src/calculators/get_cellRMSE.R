@@ -11,6 +11,7 @@
 #   - parameter: the parameter to compute RMSE for
 #   - beta_levels: the beta levels used in the simulation study
 #   - rmse_by_beta: a vector of RMSEs for each beta level
+#   - mse_by_beta: a vector of MSEs for each beta level
 #   - bias_by_beta: a vector of bias values for each beta level (mean(estimates - true))
 #   - variance_by_beta: a vector of variance values for each beta level (var(estimates))
 ###################################################################
@@ -35,9 +36,11 @@ get_cellRMSE <- function(resultsFile = NULL, parameter = "bound_mean") {
     # Calculate RMSE, bias, and variance for each beta level
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Start empty vectors to store metrics for each beta level
-    rmse_by_beta <- rep(NA, length(beta_levels))
+    mse_by_beta <- rep(NA, length(beta_levels))
+    rmse_by_beta <- rep(NA, length(beta_levels))    
     bias_by_beta <- rep(NA, length(beta_levels))
-    variance_by_beta <- rep(NA, length(beta_levels))
+    variance_by_beta <- rep(NA, length(beta_levels))    
+    names(mse_by_beta) <- as.character(beta_levels)
     names(rmse_by_beta) <- as.character(beta_levels)
     names(bias_by_beta) <- as.character(beta_levels)
     names(variance_by_beta) <- as.character(beta_levels)
@@ -71,11 +74,13 @@ get_cellRMSE <- function(resultsFile = NULL, parameter = "bound_mean") {
                 
                 # Calculate RMSE: sqrt(mean((estimates - true_values)^2))
                 # Note: MSE = Bias² + Variance, so RMSE = sqrt(MSE)
-                squared_errors <- error^2
+                squared_errors <- error^2                
                 mean_squared_errors <- mean(squared_errors)
+                mse_by_beta[i] <- mean_squared_errors
                 rmse_by_beta[i] <- sqrt(mean_squared_errors)
             } else {
                 # If there are no valid true and estimated values, set all to NA
+                mse_by_beta[i] <- NA
                 rmse_by_beta[i] <- NA
                 bias_by_beta[i] <- NA
                 variance_by_beta[i] <- NA
@@ -86,6 +91,7 @@ get_cellRMSE <- function(resultsFile = NULL, parameter = "bound_mean") {
     return(list(parameter = parameter,
                 beta_levels = beta_levels,
                 rmse_by_beta = rmse_by_beta,
+                mse_by_beta = mse_by_beta,
                 bias_by_beta = bias_by_beta,
                 variance_by_beta = variance_by_beta))
 }
