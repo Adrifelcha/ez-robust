@@ -13,7 +13,7 @@
 #   - rmse_by_beta: a vector of RMSEs for each beta level
 #   - mse_by_beta: a vector of MSEs for each beta level
 #   - bias_by_beta: a vector of bias values for each beta level (mean(estimates - true))
-#   - variance_by_beta: a vector of variance values for each beta level (var(estimates))
+#   - variance_by_beta: a vector of variance values for each beta level var(estimates - true)
 ###################################################################
 
 get_cellRMSE <- function(resultsFile = NULL, parameter = "bound_mean") {
@@ -69,7 +69,7 @@ get_cellRMSE <- function(resultsFile = NULL, parameter = "bound_mean") {
                 # Calculate bias: mean(estimates - true)
                 bias_by_beta[i] <- mean(error)
                 
-                # Calculate variance: var(estimates - true)
+                # Calculate variance: var(estimates - true)                                
                 variance_by_beta[i] <- var(error)
                 
                 # Calculate RMSE: sqrt(mean((estimates - true)^2))
