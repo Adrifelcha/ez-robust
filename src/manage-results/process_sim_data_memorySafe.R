@@ -15,6 +15,7 @@ process_sim_data_by_cell <- function(seed_dir, output_dir) {
   participant_levels <- settings$participant_levels
   trial_levels <- settings$trial_levels
   param_names <- c(settings$jagsParameters)
+  statsNames <- c("meanRT", "varRT", "medianRT", "iqrVarRT", "correct")
   
   # Identify effects (i.e., noEffect vs fixedEffect)
   available_effects <- setdiff(names(sample_output), c("reps", "settings"))
@@ -42,6 +43,7 @@ process_sim_data_by_cell <- function(seed_dir, output_dir) {
               
               # Empty objects
               rhats_matrix <- c()
+              summStats_matrix <- c()
               true_values_matrix <- c()
               mean_estimates_matrix <- c()
               std_estimates_matrix <- c()
@@ -83,6 +85,9 @@ process_sim_data_by_cell <- function(seed_dir, output_dir) {
                             # Extract rhats
                             these_rhats <- t(sapply(matching_results, function(x) x$rhats))              
                             rhats_matrix <- rbind(rhats_matrix, these_rhats[,param_names])
+                            # Extract summStats
+                            these_summStats <- t(sapply(matching_results, function(x) x$summStats))              
+                            summStats_matrix <- rbind(summStats_matrix, these_summStats[,statsNames])
                             # Extract true values
                             these_truevals <- t(sapply(matching_results, function(x) x$true.values))              
                             true_values_matrix <- rbind(true_values_matrix, these_truevals[,param_names])
@@ -133,6 +138,7 @@ process_sim_data_by_cell <- function(seed_dir, output_dir) {
               cat("    -> Found", nrow(rhats_matrix), "matching results across seeds. Collating and saving...\n")
                             
               simStudy_Beta <- list("true" = true_values_matrix,
+                                    "summStats" = summStats_matrix,
                                     "estimates" = mean_estimates_matrix,
                                     "error.sd" = std_estimates_matrix,
                                     "rhats" = rhats_matrix,
