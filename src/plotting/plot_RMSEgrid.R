@@ -239,11 +239,13 @@ create_metric_plot <- function(all_data, metric_name, metric_label, parameter, p
                                        y_range, show_x_axis, show_y_axis, show_legend, add_zero_line)
         } else {
           show_legend <- (t_level == max(t_levels)) && (p_level == min(p_levels))
-          highlight_cell <- ifelse(as.numeric(p_level) * as.numeric(t_level) == 6400, 
-                                   TRUE, FALSE)
+          # Identify diagonal cells: row index equals column index
+          t_index <- which(t_levels == t_level)
+          p_index <- which(p_levels == p_level)
+          highlight_cell <- (t_index == p_index)
           plot_cell_by_beta_metric(metric_df, metric_name, conditions, condition_labels, 
                                    y_range, show_x_axis, show_y_axis, show_legend,
-                                   highlight_cell, add_zero_line)
+                                   highlight_cell, add_zero_line, highlight_color = "#d3b672")
         }
         
       } else {
