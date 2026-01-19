@@ -15,7 +15,7 @@ process_sim_data_by_cell <- function(seed_dir, output_dir) {
   participant_levels <- settings$participant_levels
   trial_levels <- settings$trial_levels
   param_names <- c(settings$jagsParameters)
-  statsNames <- c("meanRT", "varRT", "medianRT", "iqrVarRT", "correct")
+  statsNames <- c("meanRT", "varRT", "medianRT", "iqrVarRT", "correct", "X")
   
   # Identify effects (i.e., noEffect vs fixedEffect)
   available_effects <- setdiff(names(sample_output), c("reps", "settings"))
@@ -144,7 +144,8 @@ process_sim_data_by_cell <- function(seed_dir, output_dir) {
                                     "rhats" = rhats_matrix,
                                     "credInterval" = credInterval_matrix,
                                     "beta_chains" = beta_chains_matrix,                                    
-                                    "summary" = summary_matrix)
+                                    "summary" = summary_matrix,
+                                    "settings" = settings)
             
               subCell_ID <- name_subCell_ID(subCell_name = condition)
               outputFile <- name_simStudyCell(nTrials = t, nParticipants = p, nDatasets = n_seeds, 
