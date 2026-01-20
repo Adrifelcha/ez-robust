@@ -1,7 +1,7 @@
-# Main function to create a grid plot showing meanRT - medianRT difference vs drift_mean
+# Main function to create a grid plot showing meanRT - medianRT difference vs a chosen true parameter
 # Creates a 5 (trial levels) x 4 (beta groups and data types) grid
 plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range = NULL, 
-                                  point_alpha = 1) {
+                                  point_alpha = 1, true_param = "bound_mean") {
   
   # Create output directory if it doesn't exist  
   if (!dir.exists(output_dir)) {
@@ -27,7 +27,7 @@ plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range =
   p_levels <- sort(unique(p_values))
   
   cat("\n============================================================\n")
-  cat("Creating RT difference vs mu_drift grid plot\n")
+  cat("Creating RT difference vs", true_param, "grid plot\n")
   cat("Grid dimensions:", length(t_levels), "rows x 4 columns\n")
   cat("Trial levels:", paste(t_levels, collapse = ", "), "\n")  
   cat("============================================================\n\n")
@@ -86,24 +86,24 @@ plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range =
           # Filter for beta = 0
           beta_indices <- which(simStudy_Beta$true[, "betaweight"] == 0)
           if (length(beta_indices) > 0) {
-            # Extract meanRT, medianRT, and drift_mean for beta = 0
+            # Extract meanRT, medianRT, and chosen true parameter for beta = 0
             # Ensure we extract numeric values - handle list matrices
             meanRT_vals <- unlist(simStudy_Beta$summStats[beta_indices, "meanRT"])
             medianRT_vals <- unlist(simStudy_Beta$summStats[beta_indices, "medianRT"])
             meanRT_vals <- as.numeric(meanRT_vals)
             medianRT_vals <- as.numeric(medianRT_vals)
             # 'true' is stored as a list-matrix; unlist before coercion
-            drift_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, "drift_mean"]))
+            param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, true_param]))
             
             # Calculate RT difference
             rt_diff <- meanRT_vals - medianRT_vals
             
             # Store (only if we have valid data)
-            valid <- !is.na(rt_diff) & !is.na(drift_vals)
+            valid <- !is.na(rt_diff) & !is.na(param_vals)
             if (any(valid)) {
               beta0_clean_data[[length(beta0_clean_data) + 1]] <- data.frame(
                 rt_diff = rt_diff[valid],
-                drift_mean = drift_vals[valid],
+                param_value = param_vals[valid],
                 stringsAsFactors = FALSE
               )
             }
@@ -132,14 +132,14 @@ plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range =
             meanRT_vals <- as.numeric(meanRT_vals)
             medianRT_vals <- as.numeric(medianRT_vals)
             # 'true' is stored as a list-matrix; unlist before coercion
-            drift_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, "drift_mean"]))
+            param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, true_param]))
             
             rt_diff <- meanRT_vals - medianRT_vals
-            valid <- !is.na(rt_diff) & !is.na(drift_vals)
+            valid <- !is.na(rt_diff) & !is.na(param_vals)
             if (any(valid)) {
               beta0_contaminated_data[[length(beta0_contaminated_data) + 1]] <- data.frame(
                 rt_diff = rt_diff[valid],
-                drift_mean = drift_vals[valid],
+                param_value = param_vals[valid],
                 stringsAsFactors = FALSE
               )
             }
@@ -180,14 +180,14 @@ plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range =
             meanRT_vals <- as.numeric(meanRT_vals)
             medianRT_vals <- as.numeric(medianRT_vals)
             # 'true' is stored as a list-matrix; unlist before coercion
-            drift_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, "drift_mean"]))
+            param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, true_param]))
             
             rt_diff <- meanRT_vals - medianRT_vals
-            valid <- !is.na(rt_diff) & !is.na(drift_vals)
+            valid <- !is.na(rt_diff) & !is.na(param_vals)
             if (any(valid)) {
               beta04_clean_data[[length(beta04_clean_data) + 1]] <- data.frame(
                 rt_diff = rt_diff[valid],
-                drift_mean = drift_vals[valid],
+                param_value = param_vals[valid],
                 stringsAsFactors = FALSE
               )
             }
@@ -223,14 +223,14 @@ plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range =
             meanRT_vals <- as.numeric(meanRT_vals)
             medianRT_vals <- as.numeric(medianRT_vals)
             # 'true' is stored as a list-matrix; unlist before coercion
-            drift_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, "drift_mean"]))
+            param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, true_param]))
             
             rt_diff <- meanRT_vals - medianRT_vals
-            valid <- !is.na(rt_diff) & !is.na(drift_vals)
+            valid <- !is.na(rt_diff) & !is.na(param_vals)
             if (any(valid)) {
               beta04_contaminated_data[[length(beta04_contaminated_data) + 1]] <- data.frame(
                 rt_diff = rt_diff[valid],
-                drift_mean = drift_vals[valid],
+                param_value = param_vals[valid],
                 stringsAsFactors = FALSE
               )
             }
@@ -244,25 +244,25 @@ plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range =
     if (length(beta0_clean_data) > 0) {
       all_plot_data[[cell_key]]$beta0_clean <- do.call(rbind, beta0_clean_data)
     } else {
-      all_plot_data[[cell_key]]$beta0_clean <- data.frame(rt_diff = numeric(0), drift_mean = numeric(0))
+      all_plot_data[[cell_key]]$beta0_clean <- data.frame(rt_diff = numeric(0), param_value = numeric(0))
     }
     
     if (length(beta0_contaminated_data) > 0) {
       all_plot_data[[cell_key]]$beta0_contaminated <- do.call(rbind, beta0_contaminated_data)
     } else {
-      all_plot_data[[cell_key]]$beta0_contaminated <- data.frame(rt_diff = numeric(0), drift_mean = numeric(0))
+      all_plot_data[[cell_key]]$beta0_contaminated <- data.frame(rt_diff = numeric(0), param_value = numeric(0))
     }
     
     if (length(beta04_clean_data) > 0) {
       all_plot_data[[cell_key]]$beta04_clean <- do.call(rbind, beta04_clean_data)
     } else {
-      all_plot_data[[cell_key]]$beta04_clean <- data.frame(rt_diff = numeric(0), drift_mean = numeric(0))
+      all_plot_data[[cell_key]]$beta04_clean <- data.frame(rt_diff = numeric(0), param_value = numeric(0))
     }
     
     if (length(beta04_contaminated_data) > 0) {
       all_plot_data[[cell_key]]$beta04_contaminated <- do.call(rbind, beta04_contaminated_data)
     } else {
-      all_plot_data[[cell_key]]$beta04_contaminated <- data.frame(rt_diff = numeric(0), drift_mean = numeric(0))
+      all_plot_data[[cell_key]]$beta04_contaminated <- data.frame(rt_diff = numeric(0), param_value = numeric(0))
     }
     
     cat("    ✓ Completed T =", t_level, "\n")
@@ -300,7 +300,7 @@ plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range =
     for (cell_key in names(all_plot_data)) {
       for (data_name in names(all_plot_data[[cell_key]])) {
         if (nrow(all_plot_data[[cell_key]][[data_name]]) > 0) {
-          all_drift <- c(all_drift, all_plot_data[[cell_key]][[data_name]]$drift_mean)
+          all_drift <- c(all_drift, all_plot_data[[cell_key]][[data_name]]$param_value)
         }
       }
     }
@@ -375,10 +375,10 @@ plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range =
   
   # Add column labels
   mtext(expression(paste("MeanRT - MedianRT")), side = 2, line = 3, cex = 2.5, outer = TRUE)
-  mtext(expression(paste("Population-level intercept (", mu[nu], ")")), side = 1, line = 4.5, cex = 2.5, outer = TRUE)
+  mtext(paste("True parameter:", true_param), side = 1, line = 4.5, cex = 2.3, outer = TRUE)
   
   # Add group labels (Beta = 0 and Beta = 0.4)
-  mtext(expression(paste(beta, " = 0; ", nu[phantom(p) * "\u00B7" * "," * k], " = ", mu[nu])), side = 3, line = 0.5, at = 0.25, cex = 2, outer = TRUE)
+  mtext(expression(paste(beta, " = 0")), side = 3, line = 0.5, at = 0.25, cex = 2, outer = TRUE)
   mtext(expression(paste(beta, " = 0.4")), side = 3, line = 0.5, at = 0.75, cex = 2, outer = TRUE)
   
   # Add data type labels
@@ -412,7 +412,7 @@ plot_cell_scatter <- function(plot_data, x_range, y_range, point_alpha,
     # Use adjustcolor or rgb for transparency
     point_color <- rgb(0, 0, 0, alpha = point_alpha)  # Black with transparency
     
-    points(plot_data$drift_mean, plot_data$rt_diff, 
+    points(plot_data$param_value, plot_data$rt_diff, 
            col = point_color, pch = 16, cex = 0.5)
   }
   
