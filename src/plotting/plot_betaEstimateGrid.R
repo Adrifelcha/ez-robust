@@ -194,7 +194,7 @@ plot_betaEstimateGrid <- function(main_dir, output_dir, y_range = NULL, y_axis_t
         show_legend <- (t_level == max(t_levels)) && (p_level == max(p_levels))
         
         plot_cell_beta_estimates(cell_df, conditions, condition_labels, y_range, 
-                                 show_x_axis, show_y_axis, show_legend)
+                                 show_x_axis, show_y_axis, show_legend, y_axis_ticks)
       } else {
         plot.new() # Draw an empty plot if no data
       }
@@ -225,7 +225,7 @@ plot_betaEstimateGrid <- function(main_dir, output_dir, y_range = NULL, y_axis_t
 
 # Helper function to plot beta estimates for a single cell
 plot_cell_beta_estimates <- function(cell_df, conditions, condition_labels, y_range,
-                                     show_x_axis, show_y_axis, show_legend) {
+                                     show_x_axis, show_y_axis, show_legend, y_axis_ticks) {
   
   # Get unique beta levels
   beta_levels <- sort(unique(cell_df$beta))
