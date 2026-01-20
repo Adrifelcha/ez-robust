@@ -92,7 +92,8 @@ plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range =
             medianRT_vals <- unlist(simStudy_Beta$summStats[beta_indices, "medianRT"])
             meanRT_vals <- as.numeric(meanRT_vals)
             medianRT_vals <- as.numeric(medianRT_vals)
-            drift_vals <- as.numeric(simStudy_Beta$true[beta_indices, "drift_mean"])
+            # 'true' is stored as a list-matrix; unlist before coercion
+            drift_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, "drift_mean"]))
             
             # Calculate RT difference
             rt_diff <- meanRT_vals - medianRT_vals
@@ -130,7 +131,8 @@ plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range =
             medianRT_vals <- unlist(simStudy_Beta$summStats[beta_indices, "medianRT"])
             meanRT_vals <- as.numeric(meanRT_vals)
             medianRT_vals <- as.numeric(medianRT_vals)
-            drift_vals <- as.numeric(simStudy_Beta$true[beta_indices, "drift_mean"])
+            # 'true' is stored as a list-matrix; unlist before coercion
+            drift_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, "drift_mean"]))
             
             rt_diff <- meanRT_vals - medianRT_vals
             valid <- !is.na(rt_diff) & !is.na(drift_vals)
@@ -177,7 +179,8 @@ plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range =
             medianRT_vals <- unlist(simStudy_Beta$summStats[beta_indices, "medianRT"])
             meanRT_vals <- as.numeric(meanRT_vals)
             medianRT_vals <- as.numeric(medianRT_vals)
-            drift_vals <- as.numeric(simStudy_Beta$true[beta_indices, "drift_mean"])
+            # 'true' is stored as a list-matrix; unlist before coercion
+            drift_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, "drift_mean"]))
             
             rt_diff <- meanRT_vals - medianRT_vals
             valid <- !is.na(rt_diff) & !is.na(drift_vals)
@@ -219,7 +222,8 @@ plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range =
             medianRT_vals <- unlist(simStudy_Beta$summStats[beta_indices, "medianRT"])
             meanRT_vals <- as.numeric(meanRT_vals)
             medianRT_vals <- as.numeric(medianRT_vals)
-            drift_vals <- as.numeric(simStudy_Beta$true[beta_indices, "drift_mean"])
+            # 'true' is stored as a list-matrix; unlist before coercion
+            drift_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, "drift_mean"]))
             
             rt_diff <- meanRT_vals - medianRT_vals
             valid <- !is.na(rt_diff) & !is.na(drift_vals)
