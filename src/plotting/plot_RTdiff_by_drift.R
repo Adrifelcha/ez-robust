@@ -3,9 +3,7 @@
 plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range = NULL, 
                                   point_alpha = 0.1) {
   
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Validate inputs and create output directory
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # Create output directory if it doesn't exist  
   if (!dir.exists(output_dir)) {
     dir.create(output_dir, recursive = TRUE)
   }
@@ -29,10 +27,9 @@ plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range =
   p_levels <- sort(unique(p_values))
   
   cat("\n============================================================\n")
-  cat("Creating RT difference vs drift_mean grid plot\n")
+  cat("Creating RT difference vs mu_drift grid plot\n")
   cat("Grid dimensions:", length(t_levels), "rows x 4 columns\n")
-  cat("Trial levels:", paste(t_levels, collapse = ", "), "\n")
-  cat("Participant levels (merged):", paste(p_levels, collapse = ", "), "\n")
+  cat("Trial levels:", paste(t_levels, collapse = ", "), "\n")  
   cat("============================================================\n\n")
   
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -149,9 +146,7 @@ plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range =
       }
       
       # Load Beta = 0.4 data (Clean conditions)
-      # NOTE: Only use condition 1 data (where beta applies)
-      # If summStats preserves condition info, filter by cond == 1
-      # Otherwise, we'll need to adjust based on data structure
+      # NOTE: Only use condition 1 data (where beta applies, X == 1)
       for (condition in clean_conditions) {
         pattern <- paste0("sim_P", p_level, "T", t_level, "_.*\\.RData$")
         file_path <- list.files(file.path(main_dir, condition), pattern = pattern, full.names = TRUE)[1]
@@ -163,28 +158,26 @@ plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range =
             next  # Skip this file if summStats is not available
           }
           
-          # Filter for beta = 0.4
+          # Filter for beta = 0.4 AND X = 1 (condition 1) in a single step
           beta_indices <- which(simStudy_Beta$true[, "betaweight"] == 0.4)
           if (length(beta_indices) > 0) {
-            # Ensure we extract numeric values - handle list matrices
+            # Further filter for X = 1 if X column exists in summStats
+            if ("X" %in% colnames(simStudy_Beta$summStats)) {
+              x_vals <- unlist(simStudy_Beta$summStats[beta_indices, "X"])
+              x_vals <- as.numeric(x_vals)
+              # Keep only indices where X == 1
+              beta_indices <- beta_indices[which(x_vals == 1)]
+              if (length(beta_indices) == 0) {
+                next  # Skip if no condition 1 data
+              }
+            }
+            
+            # Extract values only for the filtered indices
             meanRT_vals <- unlist(simStudy_Beta$summStats[beta_indices, "meanRT"])
             medianRT_vals <- unlist(simStudy_Beta$summStats[beta_indices, "medianRT"])
             meanRT_vals <- as.numeric(meanRT_vals)
             medianRT_vals <- as.numeric(medianRT_vals)
             drift_vals <- as.numeric(simStudy_Beta$true[beta_indices, "drift_mean"])
-            
-            # TODO: Filter for condition 1 only if condition info is available
-            # Check if summStats has "cond" column
-            if ("cond" %in% colnames(simStudy_Beta$summStats)) {
-              cond_indices <- which(simStudy_Beta$summStats[beta_indices, "cond"] == 1)
-              if (length(cond_indices) > 0) {
-                meanRT_vals <- meanRT_vals[cond_indices]
-                medianRT_vals <- medianRT_vals[cond_indices]
-                drift_vals <- drift_vals[cond_indices]
-              } else {
-                next  # Skip if no condition 1 data
-              }
-            }
             
             rt_diff <- meanRT_vals - medianRT_vals
             valid <- !is.na(rt_diff) & !is.na(drift_vals)
@@ -200,36 +193,33 @@ plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range =
       }
       
       # Load Beta = 0.4 data (Contaminated conditions)
-      # NOTE: Only use condition 1 data (where beta applies)
+      # NOTE: Only use condition 1 data (where beta applies, X == 1)
       for (condition in contaminated_conditions) {
         pattern <- paste0("sim_P", p_level, "T", t_level, "_.*\\.RData$")
         file_path <- list.files(file.path(main_dir, condition), pattern = pattern, full.names = TRUE)[1]
         if (!is.na(file_path) && file.exists(file_path)) {
           load(file_path)
           
-          # Filter for beta = 0.4
+          # Filter for beta = 0.4 AND X = 1 (condition 1) in a single step
           beta_indices <- which(simStudy_Beta$true[, "betaweight"] == 0.4)
           if (length(beta_indices) > 0) {
-            # Ensure we extract numeric values - handle list matrices
-            meanRT_vals <- unlist(simStudy_Beta$summStats[beta_indices, "meanRT"])
-            medianRT_vals <- unlist(simStudy_Beta$summStats[beta_indices, "medianRT"])
-            drift_vals <- as.numeric(simStudy_Beta$true[beta_indices, "drift_mean"])
-            
-            # Convert to numeric if not already
-            meanRT_vals <- as.numeric(meanRT_vals)
-            medianRT_vals <- as.numeric(medianRT_vals)
-            
-            # TODO: Filter for condition 1 only if condition info is available
-            if ("cond" %in% colnames(simStudy_Beta$summStats)) {
-              cond_indices <- which(simStudy_Beta$summStats[beta_indices, "cond"] == 1)
-              if (length(cond_indices) > 0) {
-                meanRT_vals <- meanRT_vals[cond_indices]
-                medianRT_vals <- medianRT_vals[cond_indices]
-                drift_vals <- drift_vals[cond_indices]
-              } else {
-                next
+            # Further filter for X = 1 if X column exists in summStats
+            if ("X" %in% colnames(simStudy_Beta$summStats)) {
+              x_vals <- unlist(simStudy_Beta$summStats[beta_indices, "X"])
+              x_vals <- as.numeric(x_vals)
+              # Keep only indices where X == 1
+              beta_indices <- beta_indices[which(x_vals == 1)]
+              if (length(beta_indices) == 0) {
+                next  # Skip if no condition 1 data
               }
             }
+            
+            # Extract values only for the filtered indices
+            meanRT_vals <- unlist(simStudy_Beta$summStats[beta_indices, "meanRT"])
+            medianRT_vals <- unlist(simStudy_Beta$summStats[beta_indices, "medianRT"])
+            meanRT_vals <- as.numeric(meanRT_vals)
+            medianRT_vals <- as.numeric(medianRT_vals)
+            drift_vals <- as.numeric(simStudy_Beta$true[beta_indices, "drift_mean"])
             
             rt_diff <- meanRT_vals - medianRT_vals
             valid <- !is.na(rt_diff) & !is.na(drift_vals)
@@ -380,18 +370,19 @@ plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range =
   }
   
   # Add column labels
-  mtext(expression(paste("MeanRT - MedianRT")), side = 2, line = 4.5, cex = 2.5, outer = TRUE)
-  mtext(expression(paste("Drift mean (", mu[drift], ")")), side = 1, line = 4.5, cex = 2.5, outer = TRUE)
+  mtext(expression(paste("MeanRT - MedianRT")), side = 2, line = 3, cex = 2.5, outer = TRUE)
+  mtext(expression(paste("Population-level intercept (", mu[nu], ")")), side = 1, line = 4.5, cex = 2.5, outer = TRUE)
   
   # Add group labels (Beta = 0 and Beta = 0.4)
-  mtext(expression(paste(beta, " = 0")), side = 3, line = 0.5, at = 0.25, cex = 2, outer = TRUE)
+  mtext(expression(paste(beta, " = 0; ", nu[phantom(p) * "\u00B7" * "," * k], " = ", mu[nu])), side = 3, line = 0.5, at = 0.25, cex = 2, outer = TRUE)
   mtext(expression(paste(beta, " = 0.4")), side = 3, line = 0.5, at = 0.75, cex = 2, outer = TRUE)
   
   # Add data type labels
-  mtext("Clean", side = 3, line = -1, at = 0.125, cex = 1.5, outer = TRUE)
-  mtext("Contaminated", side = 3, line = -1, at = 0.375, cex = 1.5, outer = TRUE)
-  mtext("Clean", side = 3, line = -1, at = 0.625, cex = 1.5, outer = TRUE)
-  mtext("Contaminated", side = 3, line = -1, at = 0.875, cex = 1.5, outer = TRUE)
+  line_topMargin_2 <- 0
+  mtext("Clean", side = 3, line = line_topMargin_2, at = 0.125, cex = 1.5, outer = TRUE)
+  mtext("Contaminated", side = 3, line = line_topMargin_2, at = 0.375, cex = 1.5, outer = TRUE)
+  mtext("Clean", side = 3, line = line_topMargin_2, at = 0.625, cex = 1.5, outer = TRUE)
+  mtext("Contaminated", side = 3, line = line_topMargin_2, at = 0.875, cex = 1.5, outer = TRUE)
   
   dev.off()
   
