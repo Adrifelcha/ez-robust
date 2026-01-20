@@ -321,7 +321,7 @@ plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range =
   cat("Creating plot...\n")
   cat("============================================================\n")
   
-  output_filename <- "RTdiff_by_drift_grid.pdf"
+  output_filename <- paste0("RTdiff_by_", true_param, "_grid.pdf")
   pdf(file.path(output_dir, output_filename), width = 16, height = 14)
   
   # Setup plot layout: 5 rows x 5 columns (4 plots + 1 gap column between groups)
@@ -375,7 +375,7 @@ plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range =
   
   # Add column labels
   mtext(expression(paste("MeanRT - MedianRT")), side = 2, line = 3, cex = 2.5, outer = TRUE)
-  mtext(paste("True parameter:", true_param), side = 1, line = 4.5, cex = 2.3, outer = TRUE)
+  mtext(x_axis_label(true_param), side = 1, line = 4.5, cex = 2.5, outer = TRUE)
   
   # Add group labels (Beta = 0 and Beta = 0.4)
   mtext(expression(paste(beta, " = 0")), side = 3, line = 0.5, at = 0.25, cex = 2, outer = TRUE)
@@ -429,4 +429,17 @@ plot_cell_scatter <- function(plot_data, x_range, y_range, point_alpha,
   
   # Add horizontal line at y = 0
   abline(h = 0, lty = 2, col = "gray50", lwd = 1)
+}
+
+
+x_axis_label <- function(true_param){
+  if(true_param == "bound_mean"){
+    return(expression(paste(mu[alpha])))
+  } else if(true_param == "nondt_mean"){
+    return(expression(paste(mu[tau[0]])))
+  } else if(true_param == "drift_mean"){
+    return(expression(paste("Population-level intercept (", mu[nu], ")")))
+  } else {
+    return(expression(paste("True parameter:", true_param)))
+  }
 }
