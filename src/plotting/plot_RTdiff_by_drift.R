@@ -1,7 +1,7 @@
 # Main function to create a grid plot showing meanRT - medianRT difference vs drift_mean
 # Creates a 5 (trial levels) x 4 (beta groups and data types) grid
 plot_RTdiff_by_drift <- function(main_dir, output_dir, y_range = NULL, x_range = NULL, 
-                                  point_alpha = 0.1) {
+                                  point_alpha = 1) {
   
   # Create output directory if it doesn't exist  
   if (!dir.exists(output_dir)) {
