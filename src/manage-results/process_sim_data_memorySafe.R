@@ -144,7 +144,12 @@ process_sim_data_by_cell <- function(seed_dir, output_dir) {
                                     "rhats" = rhats_matrix,
                                     "credInterval" = credInterval_matrix,
                                     "beta_chains" = beta_chains_matrix,                                    
-                                    "summary" = summary_matrix)
+                                    "summary" = summary_matrix,
+                                    "settings_summary" = list("participant_levels" = settings$participant_levels,
+                                                             "trial_levels" = settings$trial_levels,
+                                                             "beta_levels" = settings$beta_levels,
+                                                             "true_mean_uniform" = settings$true_means,
+                                                             "true_sdev_uniform" = settings$true_sdevs))
             
               subCell_ID <- name_subCell_ID(subCell_name = condition)
               outputFile <- name_simStudyCell(nTrials = t, nParticipants = p, nDatasets = n_seeds, 
