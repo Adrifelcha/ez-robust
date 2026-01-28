@@ -36,7 +36,7 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, y_range = NULL, x_range =
   first_file <- all_files[1]
   load(first_file)
   p_levels <- sort(simStudy_Beta$settings_summary$participant_levels)
-  p_levels <- p_levels[c(1,2)]
+  p_levels <- p_levels[1]
   t_levels <- sort(simStudy_Beta$settings_summary$trial_levels)
   total_t_levels <- length(t_levels)
   total_p_levels <- length(p_levels)
