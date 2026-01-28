@@ -8,11 +8,13 @@
 # y_range: The range of the y-axis (meanRT - medianRT difference).
 # x_range: The range of the x-axis (true parameter value).
 # point_alpha: The transparency of the points.
-# true_param: The true parameter to plot against (bound_mean, drift_mean, nondt_mean, betaweight).
+# x_param: The true parameter to plot against (bound_mean, drift_mean, nondt_mean, betaweight).
 ##########################################################################
 
 plot_RTdiff_by_param <- function(main_dir, output_dir, y_range = NULL, x_range = NULL,
-                                 point_alpha = 1, true_param = "bound_mean", point_cex = 0.5) {
+                                 point_alpha = 1, x_param = "bound_mean", point_cex = 0.5,
+                                 third_param = NULL, third_param_low = NULL, third_param_high = NULL,
+                                 box_low = NULL, box_high = NULL) {
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Create output directory, if it doesn't exist
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -43,7 +45,7 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, y_range = NULL, x_range =
   total_iterations <- total_t_levels * total_p_levels  
 
   cat("\n============================================================\n")
-  cat("Creating RT difference vs", true_param, "grid plot\n")
+  cat("Creating RT difference vs", x_param, "grid plot\n")
   cat("Grid dimensions:", length(t_levels), "rows x 4 columns\n")
   cat("Trial levels:", paste(t_levels, collapse = ", "), "\n")  
   cat("============================================================\n\n")
@@ -108,7 +110,7 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, y_range = NULL, x_range =
                 medianRT_vals <- as.numeric(unlist(simStudy_Beta$summStats[beta_indices, "medianRT"]))            
                 rt_diff <- meanRT_vals - medianRT_vals
                 # Extract the true parameter value for this beta value
-                param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, true_param]))
+                param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, x_param]))
                   # Each population-level parameter repeats across participants per condition
                   param_vals <- rep(param_vals, each = p_level*2)
                             
@@ -132,7 +134,7 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, y_range = NULL, x_range =
                 medianRT_vals <- as.numeric(unlist(simStudy_Beta$summStats[beta_indices, "medianRT"]))
                 rt_diff <- meanRT_vals - medianRT_vals
                 # Extract the true parameter value for this beta value
-                param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, true_param]))
+                param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, x_param]))
                   # Each population-level parameter repeats across participants per condition
                   param_vals <- rep(param_vals, each = p_level*2)
                 
@@ -177,7 +179,7 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, y_range = NULL, x_range =
               medianRT_vals <- as.numeric(unlist(simStudy_Beta$summStats[beta_indices, "medianRT"]))
               rt_diff <- meanRT_vals - medianRT_vals
               # Extract the true parameter value for this beta value
-              param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, true_param]))
+              param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, x_param]))
                 # Each population-level parameter repeats across participants per condition
                 param_vals <- rep(param_vals, each = p_level*2)
               
@@ -201,7 +203,7 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, y_range = NULL, x_range =
               medianRT_vals <- as.numeric(unlist(simStudy_Beta$summStats[beta_indices, "medianRT"]))
               rt_diff <- meanRT_vals - medianRT_vals
               # Extract the true parameter value for this beta value
-              param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, true_param]))
+              param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, x_param]))
                 # Each population-level parameter repeats across participants per condition
                 param_vals <- rep(param_vals, each = p_level*2)
               
@@ -292,7 +294,7 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, y_range = NULL, x_range =
   cat("Creating plot...\n")
   cat("============================================================\n")
   
-  output_filename <- paste0("RTdiff_by_", true_param, "_grid.pdf")
+  output_filename <- paste0("RTdiff_by_", x_param, "_grid.pdf")
   pdf(file.path(output_dir, output_filename), width = 16, height = 14)
   
   # Setup plot layout: 5 rows x 4 columns (4 plots + 1 gap column between groups)  
@@ -304,13 +306,28 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, y_range = NULL, x_range =
                             13, 14, 0, 15, 16,
                             17, 18, 0, 19, 20), 
                           nrow = n_rows, ncol = 5, byrow = TRUE)  
-  # Use layout with custom widths: equal for plots, 0.3 for gap
-  layout(layout_matrix, widths = c(1, 1, 0.5, 1, 1))  
-  # Set margins
-  par(oma = c(6, 7, 3, 3), mar = c(1, 1.5, 0.5, 0.5))
+  # Use layout with custom widths: equal for plots, narrow gap in the middle
+  layout_widths <- c(1, 1, 0.3, 1, 1)
+  layout(layout_matrix, widths = layout_widths)  
+  
+  # Positions (in outer coordinates) for row labels on the far right
+  row_label_pos <- rev(seq(from = 1 / (2 * n_rows),
+                           to   = 1 - 1 / (2 * n_rows),
+                           length.out = n_rows))
+  # Set margins (increase top outer margin to give space for beta/group labels)
+  par(oma = c(6, 7, 5, 5), mar = c(1, 1.5, 0.5, 0.5))
+
+  # Compute normalized x-positions for the centers of the four plot columns
+  total_width <- sum(layout_widths)
+  col1_center <- 0.5 / total_width          # center of first column
+  col2_center <- 1.5 / total_width          # center of second column
+  col3_center <- 2.8 / total_width          # center of third column (after gap)
+  col4_center <- 3.8 / total_width          # center of fourth column
   
   # Plot each cell (rows: T levels, columns: 4 data groups)
+  row_index <- 0
   for(t_level in rev(t_levels)) {  # Reverse to plot high to low
+    row_index <- row_index + 1
     cell_key <- paste("T", t_level, sep = "_")
     
     # Column 1: Beta = 0, Clean
@@ -336,22 +353,29 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, y_range = NULL, x_range =
     plot_cell_scatter(plot_data, x_range, y_range, point_alpha,
                      show_x_axis = (t_level == min(t_levels)), 
                      show_y_axis = FALSE, point_cex = point_cex)
+    
+    # Add T-level label on the far right for this row
+    mtext(text = paste("T =", t_level),
+          side = 4, line = 2, at = row_label_pos[row_index],
+          cex = 2.5, outer = TRUE)
   }
   
   # Add column labels
   mtext(expression(paste("MeanRT - MedianRT")), side = 2, line = 3, cex = 2.7, outer = TRUE)
-  mtext(x_axis_label(true_param), side = 1, line = 4.5, cex = x_axis_label_cex(true_param), outer = TRUE)
+  mtext(x_axis_label(x_param), side = 1, line = 4.5, cex = x_axis_label_cex(x_param), outer = TRUE)
   
-  # Add group labels (Beta = 0 and Beta = 0.4)
-  mtext(expression(paste(beta, " = 0.0")), side = 3, line = 0.5, at = 0.25, cex = 2, outer = TRUE)
-  mtext(expression(paste(beta, " = 0.4")), side = 3, line = 0.5, at = 0.75, cex = 2, outer = TRUE)
+  # Add group labels (Beta = 0 and Beta = 0.4), centered over the two-column groups
+  mtext(expression(paste(beta, " = 0.0")), side = 3, line = 1.5,
+        at = (col1_center + col2_center) / 2, cex = 2, outer = TRUE)
+  mtext(expression(paste(beta, " = 0.4")), side = 3, line = 1.5,
+        at = (col3_center + col4_center) / 2, cex = 2, outer = TRUE)
   
-  # Add data type labels
-  line_topMargin_2 <- 0
-  mtext("Clean", side = 3, line = line_topMargin_2, at = 0.125, cex = 1.5, outer = TRUE)
-  mtext("Contaminated", side = 3, line = line_topMargin_2, at = 0.375, cex = 1.5, outer = TRUE)
-  mtext("Clean", side = 3, line = line_topMargin_2, at = 0.625, cex = 1.5, outer = TRUE)
-  mtext("Contaminated", side = 3, line = line_topMargin_2, at = 0.875, cex = 1.5, outer = TRUE)
+  # Add data type labels, centered over each individual column
+  line_topMargin_2 <- 0.3
+  mtext("Clean", side = 3, line = line_topMargin_2, at = col1_center, cex = 1.5, outer = TRUE)
+  mtext("Contaminated", side = 3, line = line_topMargin_2, at = col2_center, cex = 1.5, outer = TRUE)
+  mtext("Clean", side = 3, line = line_topMargin_2, at = col3_center, cex = 1.5, outer = TRUE)
+  mtext("Contaminated", side = 3, line = line_topMargin_2, at = col4_center, cex = 1.5, outer = TRUE)
   
   dev.off()
   
@@ -368,52 +392,83 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, y_range = NULL, x_range =
 plot_cell_scatter <- function(plot_data, x_range, y_range, point_alpha, 
                               show_x_axis = FALSE, show_y_axis = FALSE, point_cex = 0.5) {
   
-  # Create empty plot
-  plot(NA, NA, xlim = x_range, ylim = y_range, 
-       xlab = "", ylab = "", xaxt = "n", yaxt = "n", bty = "o")
-  
-  # Add points if data exists
-  if (nrow(plot_data) > 0) {
-    # Use adjustcolor or rgb for transparency
-    point_color <- rgb(0, 0, 0, alpha = point_alpha)  # Black with transparency
+    # Create empty plot
+    plot(NA, NA, xlim = x_range, ylim = y_range, 
+        xlab = "", ylab = "", xaxt = "n", yaxt = "n", bty = "o")
     
-    points(plot_data$param_value, plot_data$rt_diff, 
-           col = point_color, pch = 16, cex = point_cex)
-  }
-  
-  # Add axes if needed
-  if (show_x_axis) {
-    x_at <- pretty(x_range, n = 5)
-    axis(1, at = x_at, labels = x_at, cex.axis = 2)
-  }
-  
-  if (show_y_axis) {
-    y_at <- pretty(y_range, n = 5)
-    axis(2, at = y_at, labels = y_at, cex.axis = 2, las = 1)
-  }
-  
-  # Add horizontal line at y = 0
-  abline(h = 0, lty = 2, col = "gray50", lwd = 1)
+    # Add points to the scatter plot
+    # ------------------------------------------------------------------
+    x_vals <- plot_data$param_value
+    y_vals <- plot_data$rt_diff
+    
+    # Use adjustcolor or rgb for transparency for points
+    point_color <- rgb(0, 0, 0, alpha = point_alpha)  # Black with opacity point_alpha  
+    points(x_vals, y_vals, col = point_color, pch = 16, cex = point_cex)
+    
+    # Add a thick colored line showing a moving average over x_vals
+    # ------------------------------------------------------------------
+    # Sort by x to get a sensible curve
+    ord <- order(x_vals)
+    x_sorted <- x_vals[ord]
+    y_sorted <- y_vals[ord]
+    n <- length(x_sorted)
+      
+    # Define window width as a proportion of the x-range
+    x_span <- max(x_sorted) - min(x_sorted)  
+    window_width <- x_span * 0.10  # 10% of the x-range
+      
+    smoothed_y <- rep(NA, n)
+    for (i in 1:n){
+      in_window <- (x_sorted >= x_sorted[i] - window_width/2) &
+                    (x_sorted <= x_sorted[i] + window_width/2)
+      smoothed_y[i] <- mean(y_sorted[in_window])    
+    }
+    
+    lines(x_sorted, smoothed_y, col = "darkred", lwd = 3)
+    
+    
+    # Add axes if needed
+    if (show_x_axis) {
+      x_at <- pretty(x_range, n = 5)
+      axis(1, at = x_at, labels = x_at, cex.axis = 2)
+    }
+    
+    if (show_y_axis) {
+      y_at <- pretty(y_range, n = 5)
+      axis(2, at = y_at, labels = y_at, cex.axis = 2, las = 1)
+    }
+    
+    # Add horizontal line at y = 0
+    abline(h = 0, lty = 2, col = "gray50", lwd = 1)
 }
 
 
 # Helper function to define the x-axis label to be printed on the margin
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-x_axis_label <- function(true_param){
-  if(true_param == "bound_mean"){
+x_axis_label <- function(x_param){
+  if(x_param == "bound_mean"){
     return(expression(paste(mu[alpha])))
-  } else if(true_param == "nondt_mean"){
+  } else if(x_param == "nondt_mean"){
     return(expression(paste(mu[tau[0]])))
-  } else if(true_param == "drift_mean"){
+  } else if(x_param == "drift_mean"){
     return(expression(paste("Population-level intercept (", mu[nu], ")")))
   } else {
-    return(expression(paste("True parameter:", true_param)))
+    return(expression(paste("True parameter:", x_param)))
   }
 }
 
 # Helper function to define the size of the margin text for the x-axis label
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-x_axis_label_cex <- function(true_param){
-  if(true_param == "drift_mean"){  return(2.7)
+x_axis_label_cex <- function(x_param){
+  if(x_param == "drift_mean"){  return(2.7)
   } else {  return(3.5) }
+}
+
+# Helper function to lower and upper bounds for the background box per x parameter
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+box_bounds <- function(x_param){
+  if(x_param == "drift_mean"){  return(c(-1,1))
+  }else{if(x_param == "bound_mean"){  return(c(3.5,4.5))
+  }else{if(x_param == "nondt_mean"){  return(c(0.1,0.4))
+  }else{return(NULL)}}}
 }
