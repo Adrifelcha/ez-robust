@@ -113,6 +113,15 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, y_range = NULL, x_range =
                 param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, x_param]))
                   # Each population-level parameter repeats across participants per condition
                   param_vals <- rep(param_vals, each = p_level*2)
+                
+                # Filter by third_param if specified
+                if (!is.null(third_param)) {
+                  third_param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, third_param]))
+                  third_param_vals <- rep(third_param_vals, each = p_level*2)
+                  keep <- third_param_vals >= third_param_low & third_param_vals <= third_param_high
+                  rt_diff <- rt_diff[keep]
+                  param_vals <- param_vals[keep]
+                }
                             
                 # Store the data in the beta0_clean_data list                                          
                 aqui0_clean <- length(beta0_clean_data) + 1
@@ -142,6 +151,16 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, y_range = NULL, x_range =
                 keep <- which(x_vals == 1)
                 rt_diff <- rt_diff[keep]
                 param_vals <- param_vals[keep]
+                
+                # Filter by third_param if specified
+                if (!is.null(third_param)) {
+                  third_param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, third_param]))
+                  third_param_vals <- rep(third_param_vals, each = p_level*2)
+                  third_param_vals <- third_param_vals[keep]  # Apply same X==1 filter
+                  keep_third <- third_param_vals >= third_param_low & third_param_vals <= third_param_high
+                  rt_diff <- rt_diff[keep_third]
+                  param_vals <- param_vals[keep_third]
+                }
                                
                 # Store the data in the beta04_clean_data list
                 aqui04_clean <- length(beta04_clean_data) + 1
@@ -183,6 +202,15 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, y_range = NULL, x_range =
                 # Each population-level parameter repeats across participants per condition
                 param_vals <- rep(param_vals, each = p_level*2)
               
+              # Filter by third_param if specified
+              if (!is.null(third_param)) {
+                third_param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, third_param]))
+                third_param_vals <- rep(third_param_vals, each = p_level*2)
+                keep <- third_param_vals >= third_param_low & third_param_vals <= third_param_high
+                rt_diff <- rt_diff[keep]
+                param_vals <- param_vals[keep]
+              }
+              
               # Store the data in the beta0_contaminated_data list
               aqui0_cont <- length(beta0_contaminated_data) + 1
               beta0_contaminated_data[[aqui0_cont]] <- data.frame(rt_diff = rt_diff,
@@ -211,8 +239,18 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, y_range = NULL, x_range =
               keep <- which(x_vals == 1)
               rt_diff <- rt_diff[keep]
               param_vals <- param_vals[keep]
+              
+              # Filter by third_param if specified
+              if (!is.null(third_param)) {
+                third_param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, third_param]))
+                third_param_vals <- rep(third_param_vals, each = p_level*2)
+                third_param_vals <- third_param_vals[keep]  # Apply same X==1 filter
+                keep_third <- third_param_vals >= third_param_low & third_param_vals <= third_param_high
+                rt_diff <- rt_diff[keep_third]
+                param_vals <- param_vals[keep_third]
+              }
                               
-              # Store the data in the beta04_clean_data list
+              # Store the data in the beta04_contaminated_data list
               aqui04_cont <- length(beta04_contaminated_data) + 1
               beta04_contaminated_data[[aqui04_cont]] <- data.frame(rt_diff = rt_diff,
                                                               param_value = param_vals,
