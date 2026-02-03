@@ -11,103 +11,204 @@
 # x_param: The true parameter to plot against (bound_mean, drift_mean, nondt_mean, betaweight).
 ##########################################################################
 
-plot_RTdiff_by_param <- function(main_dir, output_dir, y_range = NULL, x_range = NULL,
-                                 point_alpha = 1, x_param = "bound_mean", point_cex = 0.5,
+plot_RTdiff_by_param <- function(main_dir, output_dir, x_param = "bound_mean", 
                                  third_param = NULL, third_param_low = NULL, third_param_high = NULL,
-                                 box_low = NULL, box_high = NULL) {
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Create output directory, if it doesn't exist
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  if (!dir.exists(output_dir)) {
-    dir.create(output_dir, recursive = TRUE)
-  }
-  
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Infer conditions from folder names in main_dir
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  all_folders <- list.dirs(main_dir, full.names = FALSE, recursive = FALSE)
-  # Separate into clean and contaminated based on folder name suffix
-  clean_conditions <- sort(all_folders[grepl("_clean$", all_folders)])
-  contaminated_conditions <- sort(all_folders[grepl("_contaminated$", all_folders)])
-  
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Load first RData file to get simulation settings
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  first_condition_path <- file.path(main_dir, clean_conditions[1])
-  all_files <- list.files(first_condition_path, pattern = "\\.RData$", full.names = TRUE)
-  first_file <- all_files[1]
-  load(first_file)
-  p_levels <- sort(simStudy_Beta$settings_summary$participant_levels)
-  p_levels <- p_levels[1]
-  t_levels <- sort(simStudy_Beta$settings_summary$trial_levels)
-  total_t_levels <- length(t_levels)
-  total_p_levels <- length(p_levels)
-  total_iterations <- total_t_levels * total_p_levels  
-
-  cat("\n============================================================\n")
-  cat("Creating RT difference vs", x_param, "grid plot\n")
-  cat("Grid dimensions:", length(t_levels), "rows x 4 columns\n")
-  cat("Trial levels:", paste(t_levels, collapse = ", "), "\n")  
-  cat("============================================================\n\n")
-  cat("Collecting data for all cells...\n")
+                                 y_range = NULL, x_range = NULL, point_alpha = 1, point_cex = 0.5, colored = FALSE) {
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # Create output directory, if it doesn't exist
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    if (!dir.exists(output_dir)) {
+      dir.create(output_dir, recursive = TRUE)
+    }
     
-  # Initialize overall progress
-  overall_progress_bar <- txtProgressBar(min = 0, max = total_iterations, 
-                                         style = 3, width = 50, char = "=")
-  iteration_count <- 0  
-  all_plot_data <- list()
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # Infer conditions from folder names in main_dir
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    all_folders <- list.dirs(main_dir, full.names = FALSE, recursive = FALSE)
+    # Separate into clean and contaminated based on folder name suffix
+    clean_conditions <- sort(all_folders[grepl("_clean$", all_folders)])
+    contaminated_conditions <- sort(all_folders[grepl("_contaminated$", all_folders)])
+    
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # Load first RData file to get simulation settings
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    first_condition_path <- file.path(main_dir, clean_conditions[1])
+    all_files <- list.files(first_condition_path, pattern = "\\.RData$", full.names = TRUE)
+    first_file <- all_files[1]
+    load(first_file)
+    # Identify trial levels
+    # ~~~~~~~~~~~~~~~~~~~~~~~~
+    t_levels <- sort(simStudy_Beta$settings_summary$trial_levels)
+    total_t_levels <- length(t_levels)
+    # Identify participant levels
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    p_levels <- sort(simStudy_Beta$settings_summary$participant_levels)
+    # The number of participants don't change the summary statistic difference
+    if(is.null(third_param)){
+      # By default, we will only use the first participant level
+      p_levels <- p_levels[1]
+    } else {
+      # But we'll add the second participant level to the list if
+      # we are conditioning on a third parameter (which reduces observations)
+      p_levels <- p_levels[1:2]
+    }  
+    total_p_levels <- length(p_levels)
+    total_iterations <- total_t_levels * total_p_levels  
 
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Collect data for all cells
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # We loop over levels of trials-per-condition (T)
-  for(t_idx in seq_along(t_levels)) {
-      # Identify this trial level
-      t_level <- t_levels[t_idx]
-      cell_key <- paste("T", t_level, sep = "_")
-
-      # Initialize storage for this T level
-      all_plot_data[[cell_key]] <- list()      
-      beta0_clean_data <- list()
-      beta0_contaminated_data <- list()
-      beta04_clean_data <- list()
-      beta04_contaminated_data <- list()
-
-      cat("\n  Processing trial level", t_idx, "of", total_t_levels, ": T =", t_level, "\n")
+    cat("\n============================================================\n")
+    cat("Creating RT difference vs", x_param, "grid plot\n")
+    cat("Grid dimensions:", length(t_levels), "rows x 4 columns\n")
+    cat("Trial levels:", paste(t_levels, collapse = ", "), "\n")  
+    cat("============================================================\n\n")
+    cat("Collecting data for all cells...\n")
       
-      # Loop through all P levels to merge data
-      for(p_idx in seq_along(p_levels)) {
-          # Identify this participant level
-          p_level <- p_levels[p_idx]          
-          
-          # Update progress bar
-          iteration_count <- iteration_count + 1
-          setTxtProgressBar(overall_progress_bar, iteration_count)
-          
-          #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-          # Clean conditions
-          #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~          
-          # Load data from the first "Clean" condition
-          # (The only difference between EZ and Robust lies on the estimates)
-          # (both conditions compute standard and robust statistics from the same data)
-          condition = clean_conditions[1]
-          # Identify the RData file for this condition and participant level
-          pattern <- paste0("sim_P", p_level, "T", t_level, "_.*\\.RData$")
-          file_path <- list.files(file.path(main_dir, condition), pattern = pattern, full.names = TRUE)[1]
+    # Initialize overall progress
+    overall_progress_bar <- txtProgressBar(min = 0, max = total_iterations, 
+                                          style = 3, width = 50, char = "=")
+    iteration_count <- 0  
+    all_plot_data <- list()
 
-          # If the file exists...
-          if(!is.na(file_path) && file.exists(file_path)) {
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # Collect data for all cells
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # We loop over levels of trials-per-condition (T)
+    for(t_idx in seq_along(t_levels)) {
+        # Identify this trial level
+        t_level <- t_levels[t_idx]
+        cell_key <- paste("T", t_level, sep = "_")
+
+        # Initialize storage for this T level
+        all_plot_data[[cell_key]] <- list()      
+        beta0_clean_data <- list()
+        beta0_contaminated_data <- list()
+        beta04_clean_data <- list()
+        beta04_contaminated_data <- list()
+
+        cat("\n  Processing trial level", t_idx, "of", total_t_levels, ": T =", t_level, "\n")
+        
+        # Loop through all P levels to merge data
+        for(p_idx in seq_along(p_levels)) {
+            # Identify this participant level
+            p_level <- p_levels[p_idx]          
+            
+            # Update progress bar
+            iteration_count <- iteration_count + 1
+            setTxtProgressBar(overall_progress_bar, iteration_count)
+            
+            #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            # Clean conditions
+            #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~          
+            # Load data from the first "Clean" condition
+            # (The only difference between EZ and Robust lies on the estimates)
+            # (both conditions compute standard and robust statistics from the same data)
+            condition = clean_conditions[1]
+            # Identify the RData file for this condition and participant level
+            pattern <- paste0("sim_P", p_level, "T", t_level, "_.*\\.RData$")
+            file_path <- list.files(file.path(main_dir, condition), pattern = pattern, full.names = TRUE)[1]
+
+            # If the file exists...
+            if(!is.na(file_path) && file.exists(file_path)) {
+                # Load the data
+                load(file_path)              
+                #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                # Beta = 0 (Column 1)
+                #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~            
+                beta_indices <- which(simStudy_Beta$true[, "betaweight"] == 0)
+                # Check that this beta value was used in the simulation
+                if (length(beta_indices) > 0) {
+                  # Extract meanRT, medianRT, and compute the difference
+                  meanRT_vals <- as.numeric(unlist(simStudy_Beta$summStats[beta_indices, "meanRT"]))
+                  medianRT_vals <- as.numeric(unlist(simStudy_Beta$summStats[beta_indices, "medianRT"]))            
+                  rt_diff <- meanRT_vals - medianRT_vals
+                  # Extract the true parameter value for this beta value
+                  param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, x_param]))
+                    # Each population-level parameter repeats across participants per condition
+                    param_vals <- rep(param_vals, each = p_level*2)
+                  
+                  # Filter by third_param if specified
+                  if (!is.null(third_param)) {
+                    # Extract the values for the third parameter for this beta value
+                    third_param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, third_param]))
+                      # Each population-level parameter repeats across participants per condition
+                      third_param_vals <- rep(third_param_vals, each = p_level*2)
+                    keep <- third_param_vals >= third_param_low & third_param_vals <= third_param_high
+                    rt_diff <- rt_diff[keep]
+                    param_vals <- param_vals[keep]
+                  }
+                              
+                  # Store the data in the beta0_clean_data list                                          
+                  aqui0_clean <- length(beta0_clean_data) + 1
+                  beta0_clean_data[[aqui0_clean]] <- data.frame(rt_diff = rt_diff,
+                                                        param_value = param_vals,
+                                                        stringsAsFactors = FALSE)
+                }
+                #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                # Beta = 0.4 (Column 3)
+                #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
+                # Look for simulations with beta = 0.4              
+                beta_indices <- which(simStudy_Beta$true[, "betaweight"] == 0.4)
+                # Check 
+                if (length(beta_indices) > 0) {
+                  # Extract the X values for this beta value
+                  x_vals <- as.numeric(unlist(simStudy_Beta$summStats[beta_indices, "X"]))                  
+                  # Extract the meanRT and medianRT values for this beta value
+                  meanRT_vals <- as.numeric(unlist(simStudy_Beta$summStats[beta_indices, "meanRT"]))
+                  medianRT_vals <- as.numeric(unlist(simStudy_Beta$summStats[beta_indices, "medianRT"]))
+                  rt_diff <- meanRT_vals - medianRT_vals
+                  # Extract the true parameter value for this beta value
+                  param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, x_param]))
+                    # Each population-level parameter repeats across participants per condition
+                    param_vals <- rep(param_vals, each = p_level*2)
+                  
+                  # Keep only the data from condition 1 (X == 1)
+                  keep <- which(x_vals == 1)
+                  rt_diff <- rt_diff[keep]
+                  param_vals <- param_vals[keep]
+                  
+                  # Filter by third_param if specified
+                  if (!is.null(third_param)) {
+                    third_param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, third_param]))
+                    third_param_vals <- rep(third_param_vals, each = p_level*2)
+                    third_param_vals <- third_param_vals[keep]  # Apply same X==1 filter
+                    keep_third <- third_param_vals >= third_param_low & third_param_vals <= third_param_high
+                    rt_diff <- rt_diff[keep_third]
+                    param_vals <- param_vals[keep_third]
+                  }
+                                
+                  # Store the data in the beta04_clean_data list
+                  aqui04_clean <- length(beta04_clean_data) + 1
+                  beta04_clean_data[[aqui04_clean]] <- data.frame(rt_diff = rt_diff,
+                                                      param_value = param_vals,
+                                                      stringsAsFactors = FALSE)                                  
+                }
+            } # Close clean condition
+            
+            #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            # Contaminated conditions
+            #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~          
+            # Load data from the first "Contaminated" condition
+            # (The only difference between EZ and Robust lies on the estimates)
+            # (both conditions compute standard and robust statistics from the same data)
+            condition = contaminated_conditions[1]
+            # Identify the RData file for this condition and participant level
+            pattern <- paste0("sim_P", p_level, "T", t_level, "_.*\\.RData$")
+            file_path <- list.files(file.path(main_dir, condition), pattern = pattern, full.names = TRUE)[1]
+            
+            # If the file exists...
+            if(!is.na(file_path) && file.exists(file_path)) {
               # Load the data
-              load(file_path)              
+              load(file_path)          
+
               #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-              # Beta = 0 (Column 1)
-              #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~            
+              # Beta = 0 (Column 2)
+              #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+              # Look for simulations with beta = 0
               beta_indices <- which(simStudy_Beta$true[, "betaweight"] == 0)
               # Check that this beta value was used in the simulation
-              if (length(beta_indices) > 0) {
-                # Extract meanRT, medianRT, and compute the difference
+              if(length(beta_indices) > 0) {
+                # Extract meanRT, medianRT, and compute the difference              
                 meanRT_vals <- as.numeric(unlist(simStudy_Beta$summStats[beta_indices, "meanRT"]))
-                medianRT_vals <- as.numeric(unlist(simStudy_Beta$summStats[beta_indices, "medianRT"]))            
+                medianRT_vals <- as.numeric(unlist(simStudy_Beta$summStats[beta_indices, "medianRT"]))
                 rt_diff <- meanRT_vals - medianRT_vals
                 # Extract the true parameter value for this beta value
                 param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, x_param]))
@@ -122,15 +223,15 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, y_range = NULL, x_range =
                   rt_diff <- rt_diff[keep]
                   param_vals <- param_vals[keep]
                 }
-                            
-                # Store the data in the beta0_clean_data list                                          
-                aqui0_clean <- length(beta0_clean_data) + 1
-                beta0_clean_data[[aqui0_clean]] <- data.frame(rt_diff = rt_diff,
-                                                      param_value = param_vals,
-                                                      stringsAsFactors = FALSE)
+                
+                # Store the data in the beta0_contaminated_data list
+                aqui0_cont <- length(beta0_contaminated_data) + 1
+                beta0_contaminated_data[[aqui0_cont]] <- data.frame(rt_diff = rt_diff,
+                                                            param_value = param_vals,
+                                                            stringsAsFactors = FALSE)
               }
               #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-              # Beta = 0.4 (Column 3)
+              # Beta = 0.4 (Column 4)
               #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
               # Look for simulations with beta = 0.4              
               beta_indices <- which(simStudy_Beta$true[, "betaweight"] == 0.4)
@@ -161,267 +262,179 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, y_range = NULL, x_range =
                   rt_diff <- rt_diff[keep_third]
                   param_vals <- param_vals[keep_third]
                 }
-                               
-                # Store the data in the beta04_clean_data list
-                aqui04_clean <- length(beta04_clean_data) + 1
-                beta04_clean_data[[aqui04_clean]] <- data.frame(rt_diff = rt_diff,
-                                                     param_value = param_vals,
-                                                     stringsAsFactors = FALSE)                                  
+                                
+                # Store the data in the beta04_contaminated_data list
+                aqui04_cont <- length(beta04_contaminated_data) + 1
+                beta04_contaminated_data[[aqui04_cont]] <- data.frame(rt_diff = rt_diff,
+                                                                param_value = param_vals,
+                                                                stringsAsFactors = FALSE)                                  
               }
-          } # Close clean condition
-          
-          #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-          # Contaminated conditions
-          #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~          
-          # Load data from the first "Contaminated" condition
-          # (The only difference between EZ and Robust lies on the estimates)
-          # (both conditions compute standard and robust statistics from the same data)
-          condition = contaminated_conditions[1]
-          # Identify the RData file for this condition and participant level
-          pattern <- paste0("sim_P", p_level, "T", t_level, "_.*\\.RData$")
-          file_path <- list.files(file.path(main_dir, condition), pattern = pattern, full.names = TRUE)[1]
-          
-          # If the file exists...
-          if(!is.na(file_path) && file.exists(file_path)) {
-            # Load the data
-            load(file_path)          
+            } # Close contaminated condition
+        } # end P loop
+        
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # Combine all participant size (P) levels for this T level
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~      
+        cat("    Combining data for T =", t_level, "...\n")      
+        # Initialize empty data frame to use if either beta = 0 or beta = 0.4 was not used
+        empty_data <- data.frame(rt_diff = numeric(0), param_value = numeric(0))
+        # Check if beta = 0 was used     
+        if (length(beta0_clean_data) > 0) {
+          all_plot_data[[cell_key]]$beta0_clean <- do.call(rbind, beta0_clean_data)
+          all_plot_data[[cell_key]]$beta0_contaminated <- do.call(rbind, beta0_contaminated_data)
+        } else {       
+          all_plot_data[[cell_key]]$beta0_clean <- empty_data
+          all_plot_data[[cell_key]]$beta0_contaminated <- empty_data
+        }      
+        # Check if beta = 0.4 was used     
+        if (length(beta04_clean_data) > 0) {
+          all_plot_data[[cell_key]]$beta04_clean <- do.call(rbind, beta04_clean_data)
+          all_plot_data[[cell_key]]$beta04_contaminated <- do.call(rbind, beta04_contaminated_data)
+        } else {
+          all_plot_data[[cell_key]]$beta04_clean <- empty_data
+          all_plot_data[[cell_key]]$beta04_contaminated <- empty_data
+        }
+        cat("    ✓ Completed T =", t_level, "\n")
+    }
+    
+    # Close the overall progress bar
+    close(overall_progress_bar)
+    cat("\nData collection complete!\n")
+    
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # Define plotting space
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-            #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            # Beta = 0 (Column 2)
-            #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
-            # Look for simulations with beta = 0
-            beta_indices <- which(simStudy_Beta$true[, "betaweight"] == 0)
-            # Check that this beta value was used in the simulation
-            if(length(beta_indices) > 0) {
-              # Extract meanRT, medianRT, and compute the difference              
-              meanRT_vals <- as.numeric(unlist(simStudy_Beta$summStats[beta_indices, "meanRT"]))
-              medianRT_vals <- as.numeric(unlist(simStudy_Beta$summStats[beta_indices, "medianRT"]))
-              rt_diff <- meanRT_vals - medianRT_vals
-              # Extract the true parameter value for this beta value
-              param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, x_param]))
-                # Each population-level parameter repeats across participants per condition
-                param_vals <- rep(param_vals, each = p_level*2)
-              
-              # Filter by third_param if specified
-              if (!is.null(third_param)) {
-                third_param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, third_param]))
-                third_param_vals <- rep(third_param_vals, each = p_level*2)
-                keep <- third_param_vals >= third_param_low & third_param_vals <= third_param_high
-                rt_diff <- rt_diff[keep]
-                param_vals <- param_vals[keep]
-              }
-              
-              # Store the data in the beta0_contaminated_data list
-              aqui0_cont <- length(beta0_contaminated_data) + 1
-              beta0_contaminated_data[[aqui0_cont]] <- data.frame(rt_diff = rt_diff,
-                                                           param_value = param_vals,
-                                                           stringsAsFactors = FALSE)
-            }
-            #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            # Beta = 0.4 (Column 4)
-            #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
-            # Look for simulations with beta = 0.4              
-            beta_indices <- which(simStudy_Beta$true[, "betaweight"] == 0.4)
-            # Check 
-            if (length(beta_indices) > 0) {
-              # Extract the X values for this beta value
-              x_vals <- as.numeric(unlist(simStudy_Beta$summStats[beta_indices, "X"]))                  
-              # Extract the meanRT and medianRT values for this beta value
-              meanRT_vals <- as.numeric(unlist(simStudy_Beta$summStats[beta_indices, "meanRT"]))
-              medianRT_vals <- as.numeric(unlist(simStudy_Beta$summStats[beta_indices, "medianRT"]))
-              rt_diff <- meanRT_vals - medianRT_vals
-              # Extract the true parameter value for this beta value
-              param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, x_param]))
-                # Each population-level parameter repeats across participants per condition
-                param_vals <- rep(param_vals, each = p_level*2)
-              
-              # Keep only the data from condition 1 (X == 1)
-              keep <- which(x_vals == 1)
-              rt_diff <- rt_diff[keep]
-              param_vals <- param_vals[keep]
-              
-              # Filter by third_param if specified
-              if (!is.null(third_param)) {
-                third_param_vals <- as.numeric(unlist(simStudy_Beta$true[beta_indices, third_param]))
-                third_param_vals <- rep(third_param_vals, each = p_level*2)
-                third_param_vals <- third_param_vals[keep]  # Apply same X==1 filter
-                keep_third <- third_param_vals >= third_param_low & third_param_vals <= third_param_high
-                rt_diff <- rt_diff[keep_third]
-                param_vals <- param_vals[keep_third]
-              }
-                              
-              # Store the data in the beta04_contaminated_data list
-              aqui04_cont <- length(beta04_contaminated_data) + 1
-              beta04_contaminated_data[[aqui04_cont]] <- data.frame(rt_diff = rt_diff,
-                                                              param_value = param_vals,
-                                                              stringsAsFactors = FALSE)                                  
-            }
-          } # Close contaminated condition
-      } # end P loop
+    # Identify the range of the y-axis (RT difference)
+    if (is.null(y_range)) {
+      cat("\nDetermining y-axis range...\n")
+      all_rt_diff <- numeric(0)
+      for (cell_key in names(all_plot_data)) {
+        for (data_name in names(all_plot_data[[cell_key]])) {
+          if (nrow(all_plot_data[[cell_key]][[data_name]]) > 0) {
+            all_rt_diff <- c(all_rt_diff, all_plot_data[[cell_key]][[data_name]]$rt_diff)
+          }
+        }
+      }    
+      y_range <- range(all_rt_diff, na.rm = TRUE)
+      y_range <- c(y_range[1] - diff(y_range) * 0.05, y_range[2] + diff(y_range) * 0.05)
+      cat("Y-axis range:", y_range[1], "to", y_range[2], "\n")
+    }
+    
+    # Identify the range of the x-axis (true parameter value)
+    if (is.null(x_range)) {
+      cat("Determining x-axis range...\n")
+      all_param_values <- numeric(0)
+      for (cell_key in names(all_plot_data)) {
+        for (data_name in names(all_plot_data[[cell_key]])) {
+          if (nrow(all_plot_data[[cell_key]][[data_name]]) > 0) {
+            all_param_values <- c(all_param_values, all_plot_data[[cell_key]][[data_name]]$param_value)
+          }
+        }
+      }    
+      x_range <- range(all_param_values, na.rm = TRUE)
+      x_range <- c(x_range[1] - diff(x_range) * 0.05, x_range[2] + diff(x_range) * 0.05)    
+      cat("X-axis range:", x_range[1], "to", x_range[2], "\n\n")
+    }
+    
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # Create the plot
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    cat("\n")
+    cat("============================================================\n")
+    cat("Creating plot...\n")
+    cat("============================================================\n")
+    
+    output_filename <- file_name(x_param, third_param)
+    pdf(file.path(output_dir, output_filename), width = 16, height = 14)
+    
+    # Setup plot layout: 5 rows x 4 columns (4 plots + 1 gap column between groups)  
+    n_rows <- length(t_levels)  
+    # Create layout matrix with 5 columns: plot, plot, gap, plot, plot
+    layout_matrix <- matrix(c(1, 2, 0, 3, 4,
+                              5, 6, 0, 7, 8,
+                              9, 10, 0, 11, 12,
+                              13, 14, 0, 15, 16,
+                              17, 18, 0, 19, 20), 
+                            nrow = n_rows, ncol = 5, byrow = TRUE)  
+    # Use layout with custom widths: equal for plots, narrow gap in the middle
+    layout_widths <- c(1, 1, 0.3, 1, 1)
+    layout(layout_matrix, widths = layout_widths)  
+    
+    # Positions (in outer coordinates) for row labels on the far right
+    row_label_pos <- rev(seq(from = 1 / (2 * n_rows),
+                            to   = 1 - 1 / (2 * n_rows),
+                            length.out = n_rows))
+    # Set margins (increase top outer margin to give space for beta/group labels)
+    par(oma = c(6, 7, 5, 5), mar = c(1, 1.5, 0.5, 0.5))
+
+    # Compute normalized x-positions for the centers of the four plot columns
+    total_width <- sum(layout_widths)
+    col1_center <- 0.5 / total_width          # center of first column
+    col2_center <- 1.5 / total_width          # center of second column
+    col3_center <- 2.8 / total_width          # center of third column (after gap)
+    col4_center <- 3.8 / total_width          # center of fourth column
+    
+    # Plot each cell (rows: T levels, columns: 4 data groups)
+    row_index <- 0
+    for(t_level in rev(t_levels)) {  # Reverse to plot high to low
+      row_index <- row_index + 1
+      cell_key <- paste("T", t_level, sep = "_")
       
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      # Combine all participant size (P) levels for this T level
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~      
-      cat("    Combining data for T =", t_level, "...\n")      
-      # Initialize empty data frame to use if either beta = 0 or beta = 0.4 was not used
-      empty_data <- data.frame(rt_diff = numeric(0), param_value = numeric(0))
-      # Check if beta = 0 was used     
-      if (length(beta0_clean_data) > 0) {
-        all_plot_data[[cell_key]]$beta0_clean <- do.call(rbind, beta0_clean_data)
-        all_plot_data[[cell_key]]$beta0_contaminated <- do.call(rbind, beta0_contaminated_data)
-      } else {       
-        all_plot_data[[cell_key]]$beta0_clean <- empty_data
-        all_plot_data[[cell_key]]$beta0_contaminated <- empty_data
-      }      
-      # Check if beta = 0.4 was used     
-      if (length(beta04_clean_data) > 0) {
-        all_plot_data[[cell_key]]$beta04_clean <- do.call(rbind, beta04_clean_data)
-        all_plot_data[[cell_key]]$beta04_contaminated <- do.call(rbind, beta04_contaminated_data)
-      } else {
-        all_plot_data[[cell_key]]$beta04_clean <- empty_data
-        all_plot_data[[cell_key]]$beta04_contaminated <- empty_data
-      }
-      cat("    ✓ Completed T =", t_level, "\n")
-  }
-  
-  # Close the overall progress bar
-  close(overall_progress_bar)
-  cat("\nData collection complete!\n")
-  
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Define plotting space
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-  # Identify the range of the y-axis (RT difference)
-  if (is.null(y_range)) {
-    cat("\nDetermining y-axis range...\n")
-    all_rt_diff <- numeric(0)
-    for (cell_key in names(all_plot_data)) {
-      for (data_name in names(all_plot_data[[cell_key]])) {
-        if (nrow(all_plot_data[[cell_key]][[data_name]]) > 0) {
-          all_rt_diff <- c(all_rt_diff, all_plot_data[[cell_key]][[data_name]]$rt_diff)
-        }
-      }
-    }    
-    y_range <- range(all_rt_diff, na.rm = TRUE)
-    y_range <- c(y_range[1] - diff(y_range) * 0.05, y_range[2] + diff(y_range) * 0.05)
-    cat("Y-axis range:", y_range[1], "to", y_range[2], "\n")
-  }
-  
-  # Identify the range of the x-axis (true parameter value)
-  if (is.null(x_range)) {
-    cat("Determining x-axis range...\n")
-    all_param_values <- numeric(0)
-    for (cell_key in names(all_plot_data)) {
-      for (data_name in names(all_plot_data[[cell_key]])) {
-        if (nrow(all_plot_data[[cell_key]][[data_name]]) > 0) {
-          all_param_values <- c(all_param_values, all_plot_data[[cell_key]][[data_name]]$param_value)
-        }
-      }
-    }    
-    x_range <- range(all_param_values, na.rm = TRUE)
-    x_range <- c(x_range[1] - diff(x_range) * 0.05, x_range[2] + diff(x_range) * 0.05)    
-    cat("X-axis range:", x_range[1], "to", x_range[2], "\n\n")
-  }
-  
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Create the plot
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  cat("\n")
-  cat("============================================================\n")
-  cat("Creating plot...\n")
-  cat("============================================================\n")
-  
-  output_filename <- paste0("RTdiff_by_", x_param, "_grid.pdf")
-  pdf(file.path(output_dir, output_filename), width = 16, height = 14)
-  
-  # Setup plot layout: 5 rows x 4 columns (4 plots + 1 gap column between groups)  
-  n_rows <- length(t_levels)  
-  # Create layout matrix with 5 columns: plot, plot, gap, plot, plot
-  layout_matrix <- matrix(c(1, 2, 0, 3, 4,
-                            5, 6, 0, 7, 8,
-                            9, 10, 0, 11, 12,
-                            13, 14, 0, 15, 16,
-                            17, 18, 0, 19, 20), 
-                          nrow = n_rows, ncol = 5, byrow = TRUE)  
-  # Use layout with custom widths: equal for plots, narrow gap in the middle
-  layout_widths <- c(1, 1, 0.3, 1, 1)
-  layout(layout_matrix, widths = layout_widths)  
-  
-  # Positions (in outer coordinates) for row labels on the far right
-  row_label_pos <- rev(seq(from = 1 / (2 * n_rows),
-                           to   = 1 - 1 / (2 * n_rows),
-                           length.out = n_rows))
-  # Set margins (increase top outer margin to give space for beta/group labels)
-  par(oma = c(6, 7, 5, 5), mar = c(1, 1.5, 0.5, 0.5))
-
-  # Compute normalized x-positions for the centers of the four plot columns
-  total_width <- sum(layout_widths)
-  col1_center <- 0.5 / total_width          # center of first column
-  col2_center <- 1.5 / total_width          # center of second column
-  col3_center <- 2.8 / total_width          # center of third column (after gap)
-  col4_center <- 3.8 / total_width          # center of fourth column
-  
-  # Plot each cell (rows: T levels, columns: 4 data groups)
-  row_index <- 0
-  for(t_level in rev(t_levels)) {  # Reverse to plot high to low
-    row_index <- row_index + 1
-    cell_key <- paste("T", t_level, sep = "_")
+      # Column 1: Beta = 0, Clean
+      plot_data <- all_plot_data[[cell_key]]$beta0_clean
+      plot_cell_scatter(plot_data, x_range, y_range, point_alpha, 
+                      show_x_axis = (t_level == min(t_levels)), 
+                      show_y_axis = TRUE, point_cex = point_cex)
+      
+      # Column 2: Beta = 0, Contaminated  
+      plot_data <- all_plot_data[[cell_key]]$beta0_contaminated
+      plot_cell_scatter(plot_data, x_range, y_range, point_alpha,
+                      show_x_axis = (t_level == min(t_levels)), 
+                      show_y_axis = FALSE, point_cex = point_cex)
+              
+      # Column 3: Beta = 0.4, Clean
+      plot_data <- all_plot_data[[cell_key]]$beta04_clean
+      plot_cell_scatter(plot_data, x_range, y_range, point_alpha,
+                      show_x_axis = (t_level == min(t_levels)), 
+                      show_y_axis = FALSE, point_cex = point_cex)
+      
+      # Column 4: Beta = 0.4, Contaminated
+      plot_data <- all_plot_data[[cell_key]]$beta04_contaminated
+      plot_cell_scatter(plot_data, x_range, y_range, point_alpha,
+                      show_x_axis = (t_level == min(t_levels)), 
+                      show_y_axis = FALSE, point_cex = point_cex)
+      
+      # Add T-level label on the far right for this row
+      mtext(text = paste("T =", t_level),
+            side = 4, line = 2, at = row_label_pos[row_index],
+            cex = 2.5, outer = TRUE)
+    }
     
-    # Column 1: Beta = 0, Clean
-    plot_data <- all_plot_data[[cell_key]]$beta0_clean
-    plot_cell_scatter(plot_data, x_range, y_range, point_alpha, 
-                     show_x_axis = (t_level == min(t_levels)), 
-                     show_y_axis = TRUE, point_cex = point_cex)
+    # Add column labels
+    mtext(expression(paste("MeanRT - MedianRT")), side = 2, line = 3, cex = 2.7, outer = TRUE)
+    mtext(x_axis_label(x_param), side = 1, line = 4.5, cex = x_axis_label_cex(x_param), outer = TRUE)
     
-    # Column 2: Beta = 0, Contaminated  
-    plot_data <- all_plot_data[[cell_key]]$beta0_contaminated
-    plot_cell_scatter(plot_data, x_range, y_range, point_alpha,
-                     show_x_axis = (t_level == min(t_levels)), 
-                     show_y_axis = FALSE, point_cex = point_cex)
-            
-    # Column 3: Beta = 0.4, Clean
-    plot_data <- all_plot_data[[cell_key]]$beta04_clean
-    plot_cell_scatter(plot_data, x_range, y_range, point_alpha,
-                     show_x_axis = (t_level == min(t_levels)), 
-                     show_y_axis = FALSE, point_cex = point_cex)
+    # Add group labels (Beta = 0 and Beta = 0.4), centered over the two-column groups
+    mtext(expression(paste(beta, " = 0.0")), side = 3, line = 1.5,
+          at = (col1_center + col2_center) / 2, cex = 2, outer = TRUE)
+    mtext(expression(paste(beta, " = 0.4")), side = 3, line = 1.5,
+          at = (col3_center + col4_center) / 2, cex = 2, outer = TRUE)
     
-    # Column 4: Beta = 0.4, Contaminated
-    plot_data <- all_plot_data[[cell_key]]$beta04_contaminated
-    plot_cell_scatter(plot_data, x_range, y_range, point_alpha,
-                     show_x_axis = (t_level == min(t_levels)), 
-                     show_y_axis = FALSE, point_cex = point_cex)
+    # Add data type labels, centered over each individual column
+    line_topMargin_2 <- 0.3
+    mtext("Clean", side = 3, line = line_topMargin_2, at = col1_center, cex = 1.5, outer = TRUE)
+    mtext("Contaminated", side = 3, line = line_topMargin_2, at = col2_center, cex = 1.5, outer = TRUE)
+    mtext("Clean", side = 3, line = line_topMargin_2, at = col3_center, cex = 1.5, outer = TRUE)
+    mtext("Contaminated", side = 3, line = line_topMargin_2, at = col4_center, cex = 1.5, outer = TRUE)
     
-    # Add T-level label on the far right for this row
-    mtext(text = paste("T =", t_level),
-          side = 4, line = 2, at = row_label_pos[row_index],
-          cex = 2.5, outer = TRUE)
-  }
-  
-  # Add column labels
-  mtext(expression(paste("MeanRT - MedianRT")), side = 2, line = 3, cex = 2.7, outer = TRUE)
-  mtext(x_axis_label(x_param), side = 1, line = 4.5, cex = x_axis_label_cex(x_param), outer = TRUE)
-  
-  # Add group labels (Beta = 0 and Beta = 0.4), centered over the two-column groups
-  mtext(expression(paste(beta, " = 0.0")), side = 3, line = 1.5,
-        at = (col1_center + col2_center) / 2, cex = 2, outer = TRUE)
-  mtext(expression(paste(beta, " = 0.4")), side = 3, line = 1.5,
-        at = (col3_center + col4_center) / 2, cex = 2, outer = TRUE)
-  
-  # Add data type labels, centered over each individual column
-  line_topMargin_2 <- 0.3
-  mtext("Clean", side = 3, line = line_topMargin_2, at = col1_center, cex = 1.5, outer = TRUE)
-  mtext("Contaminated", side = 3, line = line_topMargin_2, at = col2_center, cex = 1.5, outer = TRUE)
-  mtext("Clean", side = 3, line = line_topMargin_2, at = col3_center, cex = 1.5, outer = TRUE)
-  mtext("Contaminated", side = 3, line = line_topMargin_2, at = col4_center, cex = 1.5, outer = TRUE)
-  
-  dev.off()
-  
-  cat("\n")
-  cat("============================================================\n")
-  cat("Plot saved to:", file.path(output_dir, output_filename), "\n")
-  cat("Plotting complete!\n")
-  cat("============================================================\n\n")
+    dev.off()
+    
+    cat("\n")
+    cat("============================================================\n")
+    cat("Plot saved to:", file.path(output_dir, output_filename), "\n")
+    cat("Plotting complete!\n")
+    cat("============================================================\n\n")
 }
 
 ###################################################################
@@ -509,4 +522,13 @@ box_bounds <- function(x_param){
   }else{if(x_param == "bound_mean"){  return(c(3.5,4.5))
   }else{if(x_param == "nondt_mean"){  return(c(0.1,0.4))
   }else{return(NULL)}}}
+}
+
+
+file_name <- function(x_param, third_param = NULL){
+  if(is.null(third_param)){
+    return(paste0("RTdiff_by_", x_param, ".pdf"))
+  }else{
+    return(paste0("RTdiff_by_", x_param, "_fixed_", third_param, ".pdf"))
+  }
 }
