@@ -11,7 +11,7 @@
 # x_param: The true parameter to plot against (bound_mean, drift_mean, nondt_mean, betaweight).
 ##########################################################################
 
-plot_RTdiff_by_param <- function(main_dir, output_dir, x_param = "bound_mean", 
+plot_RTdiff_by_param <- function(main_dir, output_dir, x_param = "bound_mean",
                                  third_param = NULL, third_param_low = NULL, third_param_high = NULL,
                                  y_range = NULL, x_range = NULL, point_alpha = 1, point_cex = 0.5, colored = FALSE) {
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -26,13 +26,13 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, x_param = "bound_mean",
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     all_folders <- list.dirs(main_dir, full.names = FALSE, recursive = FALSE)
     # Separate into clean and contaminated based on folder name suffix
-    clean_conditions <- sort(all_folders[grepl("_clean$", all_folders)])
-    contaminated_conditions <- sort(all_folders[grepl("_contaminated$", all_folders)])
+    clean_condition <- sort(all_folders[grepl("_clean$", all_folders)])[1]
+    contaminated_condition <- sort(all_folders[grepl("_contaminated$", all_folders)])[1]
     
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # Load first RData file to get simulation settings
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    first_condition_path <- file.path(main_dir, clean_conditions[1])
+    first_condition_path <- file.path(main_dir, clean_condition)
     all_files <- list.files(first_condition_path, pattern = "\\.RData$", full.names = TRUE)
     first_file <- all_files[1]
     load(first_file)
@@ -99,12 +99,10 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, x_param = "bound_mean",
             # Clean conditions
             #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~          
             # Load data from the first "Clean" condition
-            # (The only difference between EZ and Robust lies on the estimates)
-            # (both conditions compute standard and robust statistics from the same data)
-            condition = clean_conditions[1]
+
             # Identify the RData file for this condition and participant level
             pattern <- paste0("sim_P", p_level, "T", t_level, "_.*\\.RData$")
-            file_path <- list.files(file.path(main_dir, condition), pattern = pattern, full.names = TRUE)[1]
+            file_path <- list.files(file.path(main_dir, clean_condition), pattern = pattern, full.names = TRUE)[1]
 
             # If the file exists...
             if(!is.na(file_path) && file.exists(file_path)) {
@@ -187,12 +185,10 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, x_param = "bound_mean",
             # Contaminated conditions
             #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~          
             # Load data from the first "Contaminated" condition
-            # (The only difference between EZ and Robust lies on the estimates)
-            # (both conditions compute standard and robust statistics from the same data)
-            condition = contaminated_conditions[1]
+            
             # Identify the RData file for this condition and participant level
             pattern <- paste0("sim_P", p_level, "T", t_level, "_.*\\.RData$")
-            file_path <- list.files(file.path(main_dir, condition), pattern = pattern, full.names = TRUE)[1]
+            file_path <- list.files(file.path(main_dir, contaminated_condition), pattern = pattern, full.names = TRUE)[1]
             
             # If the file exists...
             if(!is.na(file_path) && file.exists(file_path)) {
