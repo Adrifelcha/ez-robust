@@ -1,0 +1,2 @@
+Running this seed took  136.733333333333 minutes.
+
