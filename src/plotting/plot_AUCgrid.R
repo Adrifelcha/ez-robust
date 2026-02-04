@@ -1,5 +1,6 @@
 # Main function to create the grid of AUC plots
-plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = NULL) {
+plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = NULL,
+                         custom_title_label = NULL) {
   
   # Validate plot_by argument
   if (!plot_by %in% c("condition", "beta")) {
@@ -49,8 +50,12 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
     y_range <- c(0.49, 1.0)
   }
   
-  # Define PDF output file
-  output_filename <- paste0("AUC_grid_by_", plot_by, ".pdf")
+  # Define PDF output file name
+  if(is.null(custom_title_label)){
+    output_filename <- paste0("AUC_by_", plot_by, ".pdf")
+  } else {
+    output_filename <- paste0("AUC_by_", plot_by, "_", custom_title_label, ".pdf")
+  }
   pdf(file.path(output_dir, output_filename), width = 12, height = 12)
   
   # Setup plot layout
