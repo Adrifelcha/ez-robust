@@ -36,25 +36,23 @@ settings$true_means$bound_mean <- c(3.5, 4)
 ################################################################
 # Run simulation study
 ################################################################
-if(exists("runSim") && runSim){
-        cores       <-  detectCores()
-        my.cluster  <-  makeCluster(cores[1]-4)
+cores       <-  detectCores()
+my.cluster  <-  makeCluster(cores[1]-10)
 
-        registerDoParallel(cl = my.cluster)
-        # Then modify your foreach call to use this combine function
-        resultado <- foreach(seed = 1:1000, 
-                        .errorhandling = "pass",
-                        .combine = combine_results
-                        ) %dopar% {
-                                Z <- simStudy_runFullSeed(seed = seed,
-                                                        settings = settings,
-                                                        forceRun = forceRun,
-                                                        include_EZ_Robust = settings$include_EZ_Robust,
-                                                        redo_if_bad_rhat = TRUE,
-                                                        rhat_cutoff = 1.05,
-                                                        prevent_zero_accuracy = FALSE,
-                                                        Show = TRUE)
-                        }
-        stopCluster(cl = my.cluster)
-}
+registerDoParallel(cl = my.cluster)
+# Then modify your foreach call to use this combine function
+resultado <- foreach(seed = 1:1000, 
+                .errorhandling = "pass",
+                .combine = combine_results
+                ) %dopar% {
+                        Z <- simStudy_runFullSeed(seed = seed,
+                                                settings = settings,
+                                                forceRun = forceRun,
+                                                include_EZ_Robust = settings$include_EZ_Robust,
+                                                redo_if_bad_rhat = TRUE,
+                                                rhat_cutoff = 1.05,
+                                                prevent_zero_accuracy = FALSE,
+                                                Show = TRUE)
+                }
+stopCluster(cl = my.cluster)
 
