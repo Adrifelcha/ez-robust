@@ -30,6 +30,7 @@ source(here("demos", "simStudy_setup", "simulation_settings.R"))
 # SET CUSTOM SIMULATION SETTINGS
 ##########################################################
 settings$participant_levels <- 160
+settings$trial_levels <- c(40,160)
 settings$true_means$drift_mean <- c(2, 3)
 settings$true_means$bound_mean <- c(3.5, 4)
 
@@ -37,7 +38,7 @@ settings$true_means$bound_mean <- c(3.5, 4)
 # Run simulation study
 ################################################################
 cores       <-  detectCores()
-my.cluster  <-  makeCluster(cores[1]-10)
+my.cluster  <-  makeCluster(cores[1]-4)
 
 registerDoParallel(cl = my.cluster)
 # Then modify your foreach call to use this combine function
@@ -55,4 +56,3 @@ resultado <- foreach(seed = 1:1000,
                                                 Show = TRUE)
                 }
 stopCluster(cl = my.cluster)
-
