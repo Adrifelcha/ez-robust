@@ -11,7 +11,7 @@
 # x_param: The true parameter to plot against (bound_mean, drift_mean, nondt_mean, betaweight).
 ##########################################################################
 
-plot_RTdiff_by_param <- function(main_dir, output_dir, x_param = "bound_mean",
+plot_RTdiff_by_param <- function(main_dir, output_dir, x_param = "bound_mean", custom_title_label = NULL,
                                  third_param = NULL, third_param_low = NULL, third_param_high = NULL,
                                  y_range = NULL, x_range = NULL, point_alpha = 1, point_cex = 0.5, colored = FALSE) {
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -341,7 +341,7 @@ plot_RTdiff_by_param <- function(main_dir, output_dir, x_param = "bound_mean",
     cat("Creating plot...\n")
     cat("============================================================\n")
     
-    output_filename <- file_name(x_param, third_param)
+    output_filename <- file_name(x_param, third_param, custom_title_label)
     pdf(file.path(output_dir, output_filename), width = 16, height = 14)
     
     # Setup plot layout: 5 rows x 4 columns (4 plots + 1 gap column between groups)  
@@ -521,10 +521,18 @@ box_bounds <- function(x_param){
 }
 
 
-file_name <- function(x_param, third_param = NULL){
+file_name <- function(x_param, third_param = NULL, custom_title_label = NULL){
   if(is.null(third_param)){
-    return(paste0("RTdiff_by_", x_param, ".pdf"))
+    if(is.null(custom_title_label)){
+      return(paste0("RTdiff_by_", x_param, ".pdf"))
+    }else{
+      return(paste0("RTdiff_by_", x_param, "_", custom_title_label, ".pdf"))
+    }
   }else{
-    return(paste0("RTdiff_by_", x_param, "_fixed_", third_param, ".pdf"))
+    if(is.null(custom_title_label)){
+      return(paste0("RTdiff_by_", x_param, "_fixed_", third_param, ".pdf"))
+    }else{
+      return(paste0("RTdiff_by_", x_param, "_fixed_", third_param, "_", custom_title_label, ".pdf"))
+    }
   }
 }
