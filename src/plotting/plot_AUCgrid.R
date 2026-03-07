@@ -16,111 +16,119 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
   conditions <- c("EZ_contaminated", "EZRobust_contaminated", "EZ_clean", "EZRobust_clean")
   condition_labels <- c("EZ x Contaminated", "Robust x Contaminated", "EZ x Clean","Robust x Clean")
   
-  # Infer P and T levels from the first subfolder
-  first_condition_path <- file.path(main_dir, conditions[1])
-  all_files <- list.files(first_condition_path, pattern = "\\.RData$", full.names = TRUE)
-  rdata_files <- all_files[grepl("_P\\d+T\\d+_", basename(all_files))]
+  # Check if condition folders exist directly under main_dir
+  condition_paths <- file.path(main_dir, conditions)
+  all_conditions_exist <- all(dir.exists(condition_paths))
   
-  # Get P and T values
-  filenames <- basename(rdata_files)
-  p_values <- as.numeric(sub(".*_P(\\d+)T.*", "\\1", filenames))
-  t_values <- as.numeric(sub(".*T(\\d+)_.*", "\\1", filenames))
-  p_levels <- sort(unique(p_values))
-  t_levels <- sort(unique(t_values))
-  
-  # Determine y-axis range if not provided
-  if (is.null(y_range)) {
-    # (calculation logic remains the same)
-    min_auc <- 1.0
-    for (t_level in t_levels) {
-      for (p_level in p_levels) {
-        for (condition in conditions) {
-          pattern <- paste0("sim_P", p_level, "T", t_level, "_.*\\.RData$")
-          file_path_list <- list.files(file.path(main_dir, condition), pattern = pattern, full.names = TRUE)
-          if (length(file_path_list) > 0) {
-            roc_data <- get_cellROCs(resultsFile = file_path_list[1])
-            for (beta_level_char in names(roc_data$tpr_list)) {
-              auc <- get_AUC(roc_data$fpr, roc_data$tpr_list[[beta_level_char]])
-              if (auc < min_auc) min_auc <- auc
+  if (all_conditions_exist) {
+          # Infer P and T levels from the first subfolder
+        first_condition_path <- file.path(main_dir, conditions[1])
+        all_files <- list.files(first_condition_path, pattern = "\\.RData$", full.names = TRUE)
+        rdata_files <- all_files[grepl("_P\\d+T\\d+_", basename(all_files))]
+        
+        # Get P and T values
+        filenames <- basename(rdata_files)
+        p_values <- as.numeric(sub(".*_P(\\d+)T.*", "\\1", filenames))
+        t_values <- as.numeric(sub(".*T(\\d+)_.*", "\\1", filenames))
+        p_levels <- sort(unique(p_values))
+        t_levels <- sort(unique(t_values))
+        
+        # Determine y-axis range if not provided
+        if (is.null(y_range)) {
+          # (calculation logic remains the same)
+          min_auc <- 1.0
+          for (t_level in t_levels) {
+            for (p_level in p_levels) {
+              for (condition in conditions) {
+                pattern <- paste0("sim_P", p_level, "T", t_level, "_.*\\.RData$")
+                file_path_list <- list.files(file.path(main_dir, condition), pattern = pattern, full.names = TRUE)
+                if (length(file_path_list) > 0) {
+                  roc_data <- get_cellROCs(resultsFile = file_path_list[1])
+                  for (beta_level_char in names(roc_data$tpr_list)) {
+                    auc <- get_AUC(roc_data$fpr, roc_data$tpr_list[[beta_level_char]])
+                    if (auc < min_auc) min_auc <- auc
+                  }
+                }
+              }
+            }
+          }
+          y_range <- c(0.49, 1.0)
+        }
+        
+        # Define PDF output file name
+        if(is.null(custom_title_label)){
+          output_filename <- paste0("AUC_by_", plot_by, ".pdf")
+        } else {
+          output_filename <- paste0("AUC_by_", plot_by, "_", custom_title_label, ".pdf")
+        }
+        pdf(file.path(output_dir, output_filename), width = 12, height = 12)
+        
+        # Setup plot layout
+        par(mfrow = c(length(t_levels), length(p_levels)),
+            oma = c(7, 7, 3, 3), # bottom, left, top, right
+            mar = c(1, 1.5, 0, 0))
+        
+        # Loop through each T level (rows) from high to low
+        for (t_level in rev(t_levels)) {
+          for (p_level in p_levels) {
+            
+            # Collect AUC data for the current cell
+            auc_data_list <- list()
+            for (condition in conditions) {
+              pattern <- paste0("sim_P", p_level, "T", t_level, "_.*\\.RData$")
+              file_path <- list.files(file.path(main_dir, condition), pattern = pattern, full.names = TRUE)[1]
+              if (!is.na(file_path)) {
+                roc_data <- get_cellROCs(resultsFile = file_path)
+                for (beta_level_char in names(roc_data$tpr_list)) {
+                  auc <- get_AUC(roc_data$fpr, roc_data$tpr_list[[beta_level_char]])
+                  auc_data_list[[length(auc_data_list) + 1]] <- data.frame(
+                    condition = condition, beta = as.numeric(beta_level_char), auc = auc, stringsAsFactors = FALSE)
+                }
+              }
+            }
+            
+            # Plotting logic for one cell
+            if (length(auc_data_list) > 0) {
+              auc_df <- do.call(rbind, auc_data_list)
+              show_x_axis <- (t_level == min(t_levels))
+              show_y_axis <- (p_level == min(p_levels))
+              
+              if (plot_by == "condition") {
+                show_legend <- (t_level == max(t_levels)) && (p_level == max(p_levels))
+                plot_cell_by_condition(auc_df, conditions, condition_labels, y_range, show_x_axis, show_y_axis, show_legend)
+              } else {
+                show_legend <- (t_level == max(t_levels)) && (p_level == min(p_levels))
+                #show_legend <- (as.numeric(t_level) == 80) && (p_level == min(p_levels))
+                highlight_cell <- ifelse(as.numeric(p_level) * as.numeric(t_level) == 6400, 
+                                        TRUE, FALSE)
+                plot_cell_by_beta(auc_df, conditions, condition_labels, y_range, show_x_axis, show_y_axis, show_legend,
+                                  highlight_cell)
+              }
+              
+            } else {
+              plot.new() # Draw an empty plot if no data
+            }
+            
+            # Add cell labels
+            if (t_level == max(t_levels)) {
+              mtext(paste("P =", p_level), side = 3, line = 0.5, cex = 2.5, font = 2)
+            }
+            if (p_level == max(p_levels)) {
+              mtext(paste("T =", t_level), side = 4, line = 1.85, cex = 2.5, font = 2, las = 0)
             }
           }
         }
-      }
-    }
-    y_range <- c(0.49, 1.0)
-  }
-  
-  # Define PDF output file name
-  if(is.null(custom_title_label)){
-    output_filename <- paste0("AUC_by_", plot_by, ".pdf")
-  } else {
-    output_filename <- paste0("AUC_by_", plot_by, "_", custom_title_label, ".pdf")
-  }
-  pdf(file.path(output_dir, output_filename), width = 12, height = 12)
-  
-  # Setup plot layout
-  par(mfrow = c(length(t_levels), length(p_levels)),
-      oma = c(7, 7, 3, 3), # bottom, left, top, right
-      mar = c(1, 1.5, 0, 0))
-  
-  # Loop through each T level (rows) from high to low
-  for (t_level in rev(t_levels)) {
-    for (p_level in p_levels) {
-      
-      # Collect AUC data for the current cell
-      auc_data_list <- list()
-      for (condition in conditions) {
-        pattern <- paste0("sim_P", p_level, "T", t_level, "_.*\\.RData$")
-        file_path <- list.files(file.path(main_dir, condition), pattern = pattern, full.names = TRUE)[1]
-        if (!is.na(file_path)) {
-          roc_data <- get_cellROCs(resultsFile = file_path)
-          for (beta_level_char in names(roc_data$tpr_list)) {
-            auc <- get_AUC(roc_data$fpr, roc_data$tpr_list[[beta_level_char]])
-            auc_data_list[[length(auc_data_list) + 1]] <- data.frame(
-              condition = condition, beta = as.numeric(beta_level_char), auc = auc, stringsAsFactors = FALSE)
-          }
-        }
-      }
-      
-      # Plotting logic for one cell
-      if (length(auc_data_list) > 0) {
-        auc_df <- do.call(rbind, auc_data_list)
-        show_x_axis <- (t_level == min(t_levels))
-        show_y_axis <- (p_level == min(p_levels))
         
-        if (plot_by == "condition") {
-          show_legend <- (t_level == max(t_levels)) && (p_level == max(p_levels))
-          plot_cell_by_condition(auc_df, conditions, condition_labels, y_range, show_x_axis, show_y_axis, show_legend)
-        } else {
-          show_legend <- (t_level == max(t_levels)) && (p_level == min(p_levels))
-          #show_legend <- (as.numeric(t_level) == 80) && (p_level == min(p_levels))
-          highlight_cell <- ifelse(as.numeric(p_level) * as.numeric(t_level) == 6400, 
-                                   TRUE, FALSE)
-          plot_cell_by_beta(auc_df, conditions, condition_labels, y_range, show_x_axis, show_y_axis, show_legend,
-                            highlight_cell)
-        }
-        
-      } else {
-        plot.new() # Draw an empty plot if no data
-      }
-      
-      # Add cell labels
-      if (t_level == max(t_levels)) {
-        mtext(paste("P =", p_level), side = 3, line = 0.5, cex = 2.5, font = 2)
-      }
-      if (p_level == max(p_levels)) {
-        mtext(paste("T =", t_level), side = 4, line = 1.85, cex = 2.5, font = 2, las = 0)
-      }
-    }
-  }
-  
-  # Add common outer labels
-  mtext("Area Under Curve (AUC)", side = 2, line = 3.8, cex = 2.5, outer = TRUE)
-  mtext(expression(paste("Effect size (", beta, ")")),
-        side = 1, line = 5.7, cex = 2.5, outer = TRUE)
+        # Add common outer labels
+        mtext("Area Under Curve (AUC)", side = 2, line = 3.8, cex = 2.5, outer = TRUE)
+        mtext(expression(paste("Effect size (", beta, ")")),
+              side = 1, line = 5.7, cex = 2.5, outer = TRUE)
 
-  dev.off()
-  cat("AUC grid plot saved to:", file.path(output_dir, output_filename), "\n")
+          dev.off()
+          cat("AUC grid plot saved to:", file.path(output_dir, output_filename), "\n")
+  } else {
+    # TODO: Handle case when condition folders are not directly under main_dir
+  }
 }
 
 #######################################################################
