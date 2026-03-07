@@ -127,7 +127,147 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
           dev.off()
           cat("AUC grid plot saved to:", file.path(output_dir, output_filename), "\n")
   } else {
-    # TODO: Handle case when condition folders are not directly under main_dir
+    # Handle case when condition folders are nested under combination folders
+    # Define combination folders: drift-boundary combinations
+    combinations <- c("lowDrift-lowBound", "lowDrift-highBound", 
+                      "highDrift-lowBound", "highDrift-highBound")
+    
+    # Fixed parameters for this structure
+    p_level <- 160
+    t_levels <- c(40, 160)
+    
+    # Determine y-axis range if not provided
+    if (is.null(y_range)) {
+      min_auc <- 1.0
+      for (t_level in t_levels) {
+        for (combination in combinations) {
+          combination_path <- file.path(main_dir, combination)
+          for (condition in conditions) {
+            condition_path <- file.path(combination_path, condition)
+            if (dir.exists(condition_path)) {
+              pattern <- paste0("sim_P", p_level, "T", t_level, "_.*\\.RData$")
+              file_path_list <- list.files(condition_path, pattern = pattern, full.names = TRUE)
+              if (length(file_path_list) > 0) {
+                roc_data <- get_cellROCs(resultsFile = file_path_list[1])
+                for (beta_level_char in names(roc_data$tpr_list)) {
+                  auc <- get_AUC(roc_data$fpr, roc_data$tpr_list[[beta_level_char]])
+                  if (auc < min_auc) min_auc <- auc
+                }
+              }
+            }
+          }
+        }
+      }
+      y_range <- c(0.49, 1.0)
+    }
+    
+    # Define PDF output file name
+    if(is.null(custom_title_label)){
+      output_filename <- paste0("AUC_by_", plot_by, ".pdf")
+    } else {
+      output_filename <- paste0("AUC_by_", plot_by, "_", custom_title_label, ".pdf")
+    }
+    pdf(file.path(output_dir, output_filename), width = 12, height = 12)
+    
+    # Setup layout: 4 rows (2 boundary levels x 2 T levels) x 2 columns (drift levels)
+    # Row 1: lowBound, lowDrift (T=40, T=160)
+    # Row 2: lowBound, highDrift (T=40, T=160)
+    # Row 3: highBound, lowDrift (T=40, T=160)
+    # Row 4: highBound, highDrift (T=40, T=160)
+    # Layout matrix: each main cell has 2 subplots (T=40 top, T=160 bottom)
+    layout_matrix <- matrix(c(1, 3,    # lowBound-lowDrift T=40, lowBound-highDrift T=40
+                               2, 4,    # lowBound-lowDrift T=160, lowBound-highDrift T=160
+                               5, 7,    # highBound-lowDrift T=40, highBound-highDrift T=40
+                               6, 8),   # highBound-lowDrift T=160, highBound-highDrift T=160
+                             nrow = 4, ncol = 2, byrow = TRUE)
+    layout(layout_matrix, widths = c(1, 1), heights = c(1, 1, 1, 1))
+    
+    # Set margins with space for labels
+    par(oma = c(7, 7, 5, 3), mar = c(2, 2, 2, 1))
+    
+    # Define boundary and drift levels for ordering
+    boundary_levels <- c("lowBound", "highBound")
+    drift_levels <- c("lowDrift", "highDrift")
+    
+    # Loop order must match layout: boundary -> drift -> T level
+    plot_idx <- 0
+    for (boundary_idx in seq_along(boundary_levels)) {
+      boundary_level <- boundary_levels[boundary_idx]
+      for (drift_idx in seq_along(drift_levels)) {
+        drift_level <- drift_levels[drift_idx]
+        combination <- paste0(drift_level, "-", boundary_level)
+        combination_path <- file.path(main_dir, combination)
+        
+        for (t_idx in seq_along(t_levels)) {
+          t_level <- t_levels[t_idx]
+          plot_idx <- plot_idx + 1
+          
+          # Collect AUC data for the current cell
+          auc_data_list <- list()
+          for (condition in conditions) {
+            condition_path <- file.path(combination_path, condition)
+            if (dir.exists(condition_path)) {
+              pattern <- paste0("sim_P", p_level, "T", t_level, "_.*\\.RData$")
+              file_path <- list.files(condition_path, pattern = pattern, full.names = TRUE)[1]
+              if (!is.na(file_path) && file.exists(file_path)) {
+                roc_data <- get_cellROCs(resultsFile = file_path)
+                for (beta_level_char in names(roc_data$tpr_list)) {
+                  auc <- get_AUC(roc_data$fpr, roc_data$tpr_list[[beta_level_char]])
+                  auc_data_list[[length(auc_data_list) + 1]] <- data.frame(
+                    condition = condition, beta = as.numeric(beta_level_char), auc = auc, stringsAsFactors = FALSE)
+                }
+              }
+            }
+          }
+          
+          # Determine which axes to show
+          show_x_axis <- TRUE  # Always show X axis
+          show_y_axis <- (t_level == max(t_levels)) && (drift_idx == 1)  # Only T=160 plots in left column
+          
+          # Plotting logic for one cell
+          if (length(auc_data_list) > 0) {
+            auc_df <- do.call(rbind, auc_data_list)
+            
+            # Determine legend position
+            if (plot_by == "condition") {
+              show_legend <- (boundary_idx == 1) && (drift_idx == 2) && (t_level == max(t_levels))
+              plot_cell_by_condition(auc_df, conditions, condition_labels, y_range, show_x_axis, show_y_axis, show_legend)
+            } else {
+              show_legend <- (boundary_idx == 1) && (drift_idx == 1) && (t_level == max(t_levels))
+              highlight_cell <- FALSE
+              plot_cell_by_beta(auc_df, conditions, condition_labels, y_range, show_x_axis, show_y_axis, show_legend,
+                                highlight_cell)
+            }
+          } else {
+            plot.new() # Draw an empty plot if no data
+          }
+          
+          # Add T-level label on each subplot (top-left corner)
+          mtext(paste("T =", t_level), side = 3, line = 0.5, adj = 0, cex = 1.8, col = "black", font = 2)
+        }
+      }
+    }
+    
+    # Add labels for the four main cells (boundary and drift combinations)
+    # Boundary labels span horizontally across both columns
+    # Low boundary (top half, rows 1-2)
+    mtext("Low boundary", side = 3, line = 2.5, at = 0.5, cex = 2.5, outer = TRUE, font = 2)
+    # High boundary (bottom half, rows 3-4)
+    mtext("High boundary", side = 1, line = 1, at = 0.5, cex = 2.5, outer = TRUE, font = 2)
+    
+    # Drift labels span vertically across all rows
+    # Low drift (left column)
+    mtext("Low drift", side = 2, line = 1, at = 0.5, cex = 2.5, outer = TRUE, font = 2)
+    # High drift (right column)
+    mtext("High drift", side = 4, line = 1, at = 0.5, cex = 2.5, outer = TRUE, font = 2)
+    
+    # Add common outer labels
+    mtext("Area Under Curve (AUC)", side = 2, line = 3.8, cex = 2.5, outer = TRUE)
+    mtext(expression(paste("Effect size (", beta, ")")),
+          side = 1, line = 5.7, cex = 2.5, outer = TRUE)
+    
+    dev.off()
+    cat("AUC grid plot saved to:", file.path(output_dir, output_filename), "\n")
   }
 }
 
