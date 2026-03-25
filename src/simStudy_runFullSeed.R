@@ -14,8 +14,7 @@
 #
 # Returns:
 # - A list containing:
-#   * hierarchical: Results from hierarchical model simulations
-#   * betaEffect: Results from models with predictor effects (metaregression, t-test)
+#   * betaEffect: Results from models with random predictor effects
 #   * reps: Count of repeated simulations due to errors or poor convergence
 ###################################################################################
 
@@ -57,8 +56,7 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
         settings$separate_datasets <- FALSE
   }
     
-  # Initialize storage for results - separate lists for hierarchical and regression structured models
-  out_H <- list()     # Will store results from hierarchical models
+  # Initialize storage for results
   out_Beta <- list()  # Will store results from models with random Beta value
   out_NoEffect <- list()  # Will store results from models with no effect (Beta fixed to 0)
   out_Effect <- list()  # Will store results from models with effect (Beta fixed to anything other than 0)
@@ -81,7 +79,7 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
           # Loop through all trial count levels
           for(t in settings$trial_levels){
 
-                if(d == "hierarchical" || is.null(settings$beta_levels)){
+                if(is.null(settings$beta_levels)){
                     beta_levels <- NA
                 }else{
                     beta_levels <- settings$beta_levels
@@ -135,20 +133,16 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                                                                 parameter_set = runCell$design$parameter_set)                       
 
                         # Store results for this design cell by stacking them
-                        if(d != "hierarchical"){ # Designs with betaweight parameter
-                                if(is.na(b)){
-                                    # Beta is random accross datasets
-                                    out_Beta <- rbind(out_Beta, results_cell)            
-                                } else {
-                                    # Beta is fixed accross datasets
-                                    if(b == 0){  # No effect
-                                        out_NoEffect <- rbind(out_NoEffect, results_cell)
-                                    } else {     # Fixed effect
-                                        out_Effect <- rbind(out_Effect, results_cell)
-                                    }
-                                }
-                        } else { # Hierarchical designs
-                            out_H <- rbind(out_H, results_cell)
+                        if(is.na(b)){
+                            # Beta is random accross datasets
+                            out_Beta <- rbind(out_Beta, results_cell)            
+                        } else {
+                            # Beta is fixed accross datasets
+                            if(b == 0){  # No effect
+                                out_NoEffect <- rbind(out_NoEffect, results_cell)
+                            } else {     # Fixed effect
+                                out_Effect <- rbind(out_Effect, results_cell)
+                            }
                         }
                         # Increment cell counter
                         cell <- 1 + cell
@@ -180,10 +174,6 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
     if(length(out_Beta) > 0){
         output$betaEffect <- out_Beta
     }
-    if(length(out_H) > 0){
-        output$hierarchical <- out_H
-    }
-
   # Save results to file
   save(output, file=fileName)
   
