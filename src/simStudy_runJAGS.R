@@ -107,7 +107,6 @@ runJAGS <- function(EZ_stats, EZmodel, modelType, withinSubject, this.seed,
   # Step 2: Run JAGS to sample from the posterior distribution  
   # Flag to control R-hat checking loop
   rhat_not_verified <- TRUE
-  this.seed <- seed
   nIter <- n.iter
   nBurnin <- n.burnin
   nThin <- n.thin  
