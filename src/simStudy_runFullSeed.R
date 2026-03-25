@@ -117,7 +117,8 @@ simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy
                                                         settings = settings, Show = Show, this.seed = this.seed,
                                                         prevent_zero_accuracy = prevent_zero_accuracy,
                                                         redo_if_bad_rhat=redo_if_bad_rhat, rhat_cutoff=rhat_cutoff,
-                                                        nIter = nIter, nBurnin = nBurnin, nThin = nThin, nChains = nChains)
+                                                        nIter = settings$n.iter, nBurnin = settings$n.burnin, 
+                                                        nThin = settings$n.thin, nChains = settings$n.chains)
 
                             # Increment error counter and break if too many errors
                             redo_JAGS <- redo_JAGS + 1
