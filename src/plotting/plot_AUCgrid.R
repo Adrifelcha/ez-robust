@@ -1,6 +1,6 @@
 # Main function to create the grid of AUC plots
 plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = NULL,
-                         custom_title_label = NULL) {
+                         custom_title_label = NULL, run_diagnose = TRUE) {
   
   # Validate plot_by argument
   if (!plot_by %in% c("condition", "beta")) {
@@ -12,26 +12,29 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
     dir.create(output_dir, recursive = TRUE)
   }
   
-  # Define conditions and labels
-  conditions <- c("EZ_contaminated", "EZRobust_contaminated", "EZ_clean", "EZRobust_clean")
-  condition_labels <- c("EZ x Contaminated", "Robust x Contaminated", "EZ x Clean","Robust x Clean")
+  # Infer simulation layout, condition labels, and (if needed) parameter-cell folders
+  condition_info <- read_conditions(main_dir = main_dir)
+  if (!is.null(condition_info$message)) {
+    message(condition_info$message)
+  }
+  conditions <- condition_info$conditions
+  condition_labels <- condition_info$condition_labels
   
-  # Check if condition folders exist directly under main_dir
-  condition_paths <- file.path(main_dir, conditions)
-  all_conditions_exist <- all(dir.exists(condition_paths))
+  all_conditions_exist <- identical(condition_info$layout, "direct")
   
   if (all_conditions_exist) {
-          # Infer P and T levels from the first subfolder
-        first_condition_path <- file.path(main_dir, conditions[1])
-        all_files <- list.files(first_condition_path, pattern = "\\.RData$", full.names = TRUE)
-        rdata_files <- all_files[grepl("_P\\d+T\\d+_", basename(all_files))]
-        
-        # Get P and T values
-        filenames <- basename(rdata_files)
-        p_values <- as.numeric(sub(".*_P(\\d+)T.*", "\\1", filenames))
-        t_values <- as.numeric(sub(".*T(\\d+)_.*", "\\1", filenames))
-        p_levels <- sort(unique(p_values))
-        t_levels <- sort(unique(t_values))
+        # Infer P and T levels from all condition subfolders
+        size_info <- read_size(parent_dirs = file.path(main_dir, conditions))
+        p_levels <- size_info$p_levels
+        t_levels <- size_info$t_levels
+        progress_bar <- NULL
+        progress_step <- 0
+        if (!run_diagnose) {
+          n_cells <- length(t_levels) * length(p_levels)
+          n_checks <- n_cells * length(conditions)
+          progress_max <- n_checks + if (is.null(y_range)) n_checks else 0
+          progress_bar <- txtProgressBar(min = 0, max = progress_max, style = 3)
+        }
         
         # Determine y-axis range if not provided
         if (is.null(y_range)) {
@@ -43,11 +46,15 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
                 pattern <- paste0("sim_P", p_level, "T", t_level, "_.*\\.RData$")
                 file_path_list <- list.files(file.path(main_dir, condition), pattern = pattern, full.names = TRUE)
                 if (length(file_path_list) > 0) {
-                  roc_data <- get_cellROCs(resultsFile = file_path_list[1])
+                  roc_data <- get_cellROCs(resultsFile = file_path_list[1], run_diagnose = run_diagnose)
                   for (beta_level_char in names(roc_data$tpr_list)) {
                     auc <- get_AUC(roc_data$fpr, roc_data$tpr_list[[beta_level_char]])
                     if (auc < min_auc) min_auc <- auc
                   }
+                }
+                if (!is.null(progress_bar)) {
+                  progress_step <- progress_step + 1
+                  setTxtProgressBar(progress_bar, progress_step)
                 }
               }
             }
@@ -78,12 +85,16 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
               pattern <- paste0("sim_P", p_level, "T", t_level, "_.*\\.RData$")
               file_path <- list.files(file.path(main_dir, condition), pattern = pattern, full.names = TRUE)[1]
               if (!is.na(file_path)) {
-                roc_data <- get_cellROCs(resultsFile = file_path)
+                roc_data <- get_cellROCs(resultsFile = file_path, run_diagnose = run_diagnose)
                 for (beta_level_char in names(roc_data$tpr_list)) {
                   auc <- get_AUC(roc_data$fpr, roc_data$tpr_list[[beta_level_char]])
                   auc_data_list[[length(auc_data_list) + 1]] <- data.frame(
                     condition = condition, beta = as.numeric(beta_level_char), auc = auc, stringsAsFactors = FALSE)
                 }
+              }
+              if (!is.null(progress_bar)) {
+                progress_step <- progress_step + 1
+                setTxtProgressBar(progress_bar, progress_step)
               }
             }
             
@@ -124,17 +135,42 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
         mtext(expression(paste("Effect size (", beta, ")")),
               side = 1, line = 5.7, cex = 2.5, outer = TRUE)
 
+          if (!is.null(progress_bar)) {
+            close(progress_bar)
+          }
           dev.off()
           cat("AUC grid plot saved to:", file.path(output_dir, output_filename), "\n")
   } else {
     # Handle case when condition folders are nested under combination folders
-    # Define combination folders: drift-boundary combinations
-    combinations <- c("lowDrift-lowBound", "lowDrift-highBound", 
-                      "highDrift-lowBound", "highDrift-highBound")
+    # Use inferred parameter-cell folders for nested structure
+    combinations <- condition_info$parameter_cells
+    if (length(combinations) == 0) {
+      stop("No nested combination folders with valid condition subfolders were found.")
+    }    
     
-    # Fixed parameters for this structure
-    p_level <- 160
-    t_levels <- c(40, 160)
+    # Reuse inferred conditions from nested combination folders
+    conditions <- condition_info$conditions
+    condition_labels <- condition_info$condition_labels
+    
+    # Infer size levels from all combination-condition folders
+    nested_paths <- as.vector(outer(file.path(main_dir, combinations), conditions, file.path))
+    size_info <- read_size(parent_dirs = nested_paths)
+    if (length(size_info$p_levels) != 1) {
+      stop("Nested AUC grid layout expects exactly one participant level.")
+    }
+    if (length(size_info$t_levels) != 2) {
+      stop("Nested AUC grid layout expects exactly two trial levels.")
+    }
+    p_level <- size_info$p_levels[1]
+    t_levels <- size_info$t_levels
+    progress_bar <- NULL
+    progress_step <- 0
+    if (!run_diagnose) {
+      n_cells <- length(t_levels) * length(combinations)
+      n_checks <- n_cells * length(conditions)
+      progress_max <- n_checks + if (is.null(y_range)) n_checks else 0
+      progress_bar <- txtProgressBar(min = 0, max = progress_max, style = 3)
+    }
     
     # Determine y-axis range if not provided
     if (is.null(y_range)) {
@@ -148,12 +184,16 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
               pattern <- paste0("sim_P", p_level, "T", t_level, "_.*\\.RData$")
               file_path_list <- list.files(condition_path, pattern = pattern, full.names = TRUE)
               if (length(file_path_list) > 0) {
-                roc_data <- get_cellROCs(resultsFile = file_path_list[1])
+                roc_data <- get_cellROCs(resultsFile = file_path_list[1], run_diagnose = run_diagnose)
                 for (beta_level_char in names(roc_data$tpr_list)) {
                   auc <- get_AUC(roc_data$fpr, roc_data$tpr_list[[beta_level_char]])
                   if (auc < min_auc) min_auc <- auc
                 }
               }
+            }
+            if (!is.null(progress_bar)) {
+              progress_step <- progress_step + 1
+              setTxtProgressBar(progress_bar, progress_step)
             }
           }
         }
@@ -167,34 +207,46 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
     } else {
       output_filename <- paste0("AUC_by_", plot_by, "_", custom_title_label, ".pdf")
     }
-    pdf(file.path(output_dir, output_filename), width = 12, height = 12)
+    # Use a standard device size and scale plot elements within it
+    pdf(file.path(output_dir, output_filename), width = 11, height = 11)
     
     # Setup layout: 4 rows (2 boundary levels x 2 T levels) x 2 columns (drift levels)
-    # Row 1: lowBound, lowDrift (T=40, T=160)
-    # Row 2: lowBound, highDrift (T=40, T=160)
-    # Row 3: highBound, lowDrift (T=40, T=160)
-    # Row 4: highBound, highDrift (T=40, T=160)
-    # Layout matrix: each main cell has 2 subplots (T=40 top, T=160 bottom)
-    layout_matrix <- matrix(c(1, 3,    # lowBound-lowDrift T=40, lowBound-highDrift T=40
-                               2, 4,    # lowBound-lowDrift T=160, lowBound-highDrift T=160
-                               5, 7,    # highBound-lowDrift T=40, highBound-highDrift T=40
-                               6, 8),   # highBound-lowDrift T=160, highBound-highDrift T=160
-                             nrow = 4, ncol = 2, byrow = TRUE)
-    layout(layout_matrix, widths = c(1, 1), heights = c(1, 1, 1, 1))
+    # Loop order: drift -> boundary -> T level
+    # Actual layout:
+    #   Row 1: lowDrift-lowBound T=40 (col 1), lowDrift-highBound T=40 (col 2)
+    #   Row 2: lowDrift-lowBound T=160 (col 1), lowDrift-highBound T=160 (col 2)
+    #   Row 3: highDrift-lowBound T=40 (col 1), highDrift-highBound T=40 (col 2)
+    #   Row 4: highDrift-lowBound T=160 (col 1), highDrift-highBound T=160 (col 2)
+    # Supercells (2x2 grid):
+    #   Top-left: lowDrift-lowBound (rows 1-2, col 1)
+    #   Top-right: lowDrift-highBound (rows 1-2, col 2)
+    #   Bottom-left: highDrift-lowBound (rows 3-4, col 1)
+    #   Bottom-right: highDrift-highBound (rows 3-4, col 2)
+    # Each supercell contains 2 panels: T=40 (top) and T=160 (bottom)
+    # Layout with explicit spacer row/column to separate drift blocks and bound columns
+    # 5x3 grid where row 3 and column 2 are blank spacers (0)
+    layout_matrix <- matrix(c(
+      1, 0, 3,   # Row 1: lowDrift-lowBound T=40, lowDrift-highBound T=40
+      2, 0, 4,   # Row 2: lowDrift-lowBound T=160, lowDrift-highBound T=160
+      0, 0, 0,   # Spacer between lowDrift and highDrift
+      5, 0, 7,   # Row 4: highDrift-lowBound T=40, highDrift-highBound T=40
+      6, 0, 8    # Row 5: highDrift-lowBound T=160, highDrift-highBound T=160
+    ), nrow = 5, ncol = 3, byrow = TRUE)
+    layout(layout_matrix, widths = c(0.8, 0.1, 0.8), heights = c(0.85, 0.85, 0.2, 0.85, 0.85))
     
-    # Set margins with space for labels
-    par(oma = c(7, 7, 5, 3), mar = c(2, 2, 2, 1))
+    # Keep margins compact, but reserve more room for y-axis and outer labels
+    par(cex = 0.85, oma = c(2.0, 2.8, 1.8, 0.8), mar = c(1.0, 2.2, 0.5, 0.3))
     
     # Define boundary and drift levels for ordering
     boundary_levels <- c("lowBound", "highBound")
     drift_levels <- c("lowDrift", "highDrift")
     
-    # Loop order must match layout: boundary -> drift -> T level
+    # Loop order must match layout: drift -> boundary -> T level
     plot_idx <- 0
-    for (boundary_idx in seq_along(boundary_levels)) {
-      boundary_level <- boundary_levels[boundary_idx]
-      for (drift_idx in seq_along(drift_levels)) {
-        drift_level <- drift_levels[drift_idx]
+    for (drift_idx in seq_along(drift_levels)) {
+      drift_level <- drift_levels[drift_idx]
+      for (boundary_idx in seq_along(boundary_levels)) {
+        boundary_level <- boundary_levels[boundary_idx]
         combination <- paste0(drift_level, "-", boundary_level)
         combination_path <- file.path(main_dir, combination)
         
@@ -210,7 +262,7 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
               pattern <- paste0("sim_P", p_level, "T", t_level, "_.*\\.RData$")
               file_path <- list.files(condition_path, pattern = pattern, full.names = TRUE)[1]
               if (!is.na(file_path) && file.exists(file_path)) {
-                roc_data <- get_cellROCs(resultsFile = file_path)
+                roc_data <- get_cellROCs(resultsFile = file_path, run_diagnose = run_diagnose)
                 for (beta_level_char in names(roc_data$tpr_list)) {
                   auc <- get_AUC(roc_data$fpr, roc_data$tpr_list[[beta_level_char]])
                   auc_data_list[[length(auc_data_list) + 1]] <- data.frame(
@@ -218,11 +270,15 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
                 }
               }
             }
+            if (!is.null(progress_bar)) {
+              progress_step <- progress_step + 1
+              setTxtProgressBar(progress_bar, progress_step)
+            }
           }
           
           # Determine which axes to show
-          show_x_axis <- TRUE  # Always show X axis
-          show_y_axis <- (t_level == max(t_levels)) && (drift_idx == 1)  # Only T=160 plots in left column
+          show_x_axis <- (t_level == max(t_levels))  # Show X axis labels only on bottom row
+          show_y_axis <- (boundary_idx == 1)  # Label y-axis only on the first column
           
           # Plotting logic for one cell
           if (length(auc_data_list) > 0) {
@@ -242,30 +298,214 @@ plot_AUCgrid <- function(main_dir, output_dir, plot_by = "condition", y_range = 
             plot.new() # Draw an empty plot if no data
           }
           
-          # Add T-level label on each subplot (top-left corner)
-          mtext(paste("T =", t_level), side = 3, line = 0.5, adj = 0, cex = 1.8, col = "black", font = 2)
+          # Add T-level label inside each panel (top-left corner)
+          usr <- par("usr")
+          text(x = usr[1] + 0.03 * diff(usr[1:2]),
+               y = usr[4] - 0.04 * diff(usr[3:4]),
+               labels = paste("T =", t_level),
+               adj = c(0, 1), cex = 1.3, font = 2, col = "black")
         }
       }
     }
     
-    # Add labels for the four main cells (boundary and drift combinations)
-    # Boundary labels span horizontally across both columns
-    # Low boundary (top half, rows 1-2)
-    mtext("Low boundary", side = 3, line = 2.5, at = 0.5, cex = 2.5, outer = TRUE, font = 2)
-    # High boundary (bottom half, rows 3-4)
-    mtext("High boundary", side = 1, line = 1, at = 0.5, cex = 2.5, outer = TRUE, font = 2)
+    # Draw borders around the four supercells (2x2 grid of drift x boundary)
+    # Each supercell spans 2 rows x 1 column
+    # Get outer boundaries of each supercell region
     
-    # Drift labels span vertically across all rows
-    # Low drift (left column)
-    mtext("Low drift", side = 2, line = 1, at = 0.5, cex = 2.5, outer = TRUE, font = 2)
-    # High drift (right column)
-    mtext("High drift", side = 4, line = 1, at = 0.5, cex = 2.5, outer = TRUE, font = 2)
+    # Save current par settings
+    old_par <- par(no.readonly = TRUE)
+    # Border/overlay geometry can fail on tight devices; don't abort full plot.
+    tryCatch({
     
-    # Add common outer labels
-    mtext("Area Under Curve (AUC)", side = 2, line = 3.8, cex = 2.5, outer = TRUE)
-    mtext(expression(paste("Effect size (", beta, ")")),
-          side = 1, line = 5.7, cex = 2.5, outer = TRUE)
+    # Get coordinates from plots at the edges of each supercell
+    # Layout is 5 rows × 3 columns (with spacer row/column)
+    # Supercell 1 (lowDrift-lowBound): rows 1-2, col 1 - Top-left
+    # Top edge: plot 1 (row 1, col 1)
+    par(mfg = c(1, 1, 5, 3))
+    plot.new()
+    plot.window(xlim = c(0, 1), ylim = c(0, 1))
+    sc1_left <- grconvertX(0, from = "npc", to = "ndc")
+    sc1_top <- grconvertY(1, from = "npc", to = "ndc")
+    sc1_right <- grconvertX(1, from = "npc", to = "ndc")
     
+    # Bottom edge: plot 2 (row 2, col 1)
+    par(mfg = c(2, 1, 5, 3))
+    plot.new()
+    plot.window(xlim = c(0, 1), ylim = c(0, 1))
+    sc1_bottom <- grconvertY(0, from = "npc", to = "ndc")
+    
+    # Supercell 2 (lowDrift-highBound): rows 1-2, col 2 - Top-right
+    # Top edge: plot 3 (row 1, col 2)
+    par(mfg = c(1, 3, 5, 3))
+    plot.new()
+    plot.window(xlim = c(0, 1), ylim = c(0, 1))
+    sc2_left <- grconvertX(0, from = "npc", to = "ndc")
+    sc2_top <- grconvertY(1, from = "npc", to = "ndc")
+    sc2_right <- grconvertX(1, from = "npc", to = "ndc")
+    
+    # Bottom edge: plot 4 (row 2, col 2)
+    par(mfg = c(2, 3, 5, 3))
+    plot.new()
+    plot.window(xlim = c(0, 1), ylim = c(0, 1))
+    sc2_bottom <- grconvertY(0, from = "npc", to = "ndc")
+    
+    # Supercell 3 (highDrift-lowBound): rows 3-4, col 1 - Bottom-left
+    # Top edge: plot 5 (row 3, col 1)
+    par(mfg = c(4, 1, 5, 3))
+    plot.new()
+    plot.window(xlim = c(0, 1), ylim = c(0, 1))
+    sc3_left <- grconvertX(0, from = "npc", to = "ndc")
+    sc3_top <- grconvertY(1, from = "npc", to = "ndc")
+    sc3_right <- grconvertX(1, from = "npc", to = "ndc")
+    
+    # Bottom edge: plot 6 (row 4, col 1)
+    par(mfg = c(5, 1, 5, 3))
+    plot.new()
+    plot.window(xlim = c(0, 1), ylim = c(0, 1))
+    sc3_bottom <- grconvertY(0, from = "npc", to = "ndc")
+    
+    # Supercell 4 (highDrift-highBound): rows 3-4, col 2 - Bottom-right
+    # Top edge: plot 7 (row 3, col 2)
+    par(mfg = c(4, 3, 5, 3))
+    plot.new()
+    plot.window(xlim = c(0, 1), ylim = c(0, 1))
+    sc4_left <- grconvertX(0, from = "npc", to = "ndc")
+    sc4_top <- grconvertY(1, from = "npc", to = "ndc")
+    sc4_right <- grconvertX(1, from = "npc", to = "ndc")
+    
+    # Bottom edge: plot 8 (row 4, col 2)
+    par(mfg = c(5, 3, 5, 3))
+    plot.new()
+    plot.window(xlim = c(0, 1), ylim = c(0, 1))
+    sc4_bottom <- grconvertY(0, from = "npc", to = "ndc")
+    
+    # Calculate padding to place borders outside panels
+    padding <- 0.015  # Padding in normalized device coordinates
+    
+    # Draw borders in device coordinates
+    par(fig = c(0, 1, 0, 1), new = TRUE, mar = c(0, 0, 0, 0), oma = c(0, 0, 0, 0), xpd = NA)
+    plot.new()
+    
+    # Draw borders around each supercell with padding (as lines, not filled rectangles)
+    # Top-left: lowDrift-lowBound
+    # Top border
+    segments(x0 = sc1_left - padding, y0 = sc1_top + padding, 
+             x1 = sc1_right + padding, y1 = sc1_top + padding,
+             col = "black", lwd = 3)
+    # Bottom border
+    segments(x0 = sc1_left - padding, y0 = sc1_bottom - padding, 
+             x1 = sc1_right + padding, y1 = sc1_bottom - padding,
+             col = "black", lwd = 3)
+    # Left border
+    segments(x0 = sc1_left - padding, y0 = sc1_bottom - padding, 
+             x1 = sc1_left - padding, y1 = sc1_top + padding,
+             col = "black", lwd = 3)
+    # Right border
+    segments(x0 = sc1_right + padding, y0 = sc1_bottom - padding, 
+             x1 = sc1_right + padding, y1 = sc1_top + padding,
+             col = "black", lwd = 3)
+    
+    # Top-right: highDrift-lowBound
+    # Top border
+    segments(x0 = sc2_left - padding, y0 = sc2_top + padding, 
+             x1 = sc2_right + padding, y1 = sc2_top + padding,
+             col = "black", lwd = 3)
+    # Bottom border
+    segments(x0 = sc2_left - padding, y0 = sc2_bottom - padding, 
+             x1 = sc2_right + padding, y1 = sc2_bottom - padding,
+             col = "black", lwd = 3)
+    # Left border
+    segments(x0 = sc2_left - padding, y0 = sc2_bottom - padding, 
+             x1 = sc2_left - padding, y1 = sc2_top + padding,
+             col = "black", lwd = 3)
+    # Right border
+    segments(x0 = sc2_right + padding, y0 = sc2_bottom - padding, 
+             x1 = sc2_right + padding, y1 = sc2_top + padding,
+             col = "black", lwd = 3)
+    
+    # Bottom-left: lowDrift-highBound
+    # Top border
+    segments(x0 = sc3_left - padding, y0 = sc3_top + padding, 
+             x1 = sc3_right + padding, y1 = sc3_top + padding,
+             col = "black", lwd = 3)
+    # Bottom border
+    segments(x0 = sc3_left - padding, y0 = sc3_bottom - padding, 
+             x1 = sc3_right + padding, y1 = sc3_bottom - padding,
+             col = "black", lwd = 3)
+    # Left border
+    segments(x0 = sc3_left - padding, y0 = sc3_bottom - padding, 
+             x1 = sc3_left - padding, y1 = sc3_top + padding,
+             col = "black", lwd = 3)
+    # Right border
+    segments(x0 = sc3_right + padding, y0 = sc3_bottom - padding, 
+             x1 = sc3_right + padding, y1 = sc3_top + padding,
+             col = "black", lwd = 3)
+    
+    # Bottom-right: highDrift-highBound
+    # Top border
+    segments(x0 = sc4_left - padding, y0 = sc4_top + padding, 
+             x1 = sc4_right + padding, y1 = sc4_top + padding,
+             col = "black", lwd = 3)
+    # Bottom border
+    segments(x0 = sc4_left - padding, y0 = sc4_bottom - padding, 
+             x1 = sc4_right + padding, y1 = sc4_bottom - padding,
+             col = "black", lwd = 3)
+    # Left border
+    segments(x0 = sc4_left - padding, y0 = sc4_bottom - padding, 
+             x1 = sc4_left - padding, y1 = sc4_top + padding,
+             col = "black", lwd = 3)
+    # Right border
+    segments(x0 = sc4_right + padding, y0 = sc4_bottom - padding, 
+             x1 = sc4_right + padding, y1 = sc4_top + padding,
+             col = "black", lwd = 3)
+    
+    # Restore par for labels
+    par(old_par)
+    
+    # Add labels for supercells - bound labels on top margin, drift labels on left margin
+    # Top margin: Bound labels (one per column)
+    # Convert supercell center positions to normalized figure coordinates
+    # Low drift: left supercell column (col 1 in layout) - position at horizontal center of left column
+    low_drift_center_x <- (sc1_left + sc1_right) / 2
+    low_drift_x_nfc <- grconvertX(low_drift_center_x, from = "ndc", to = "nfc")
+    mtext("low bound", side = 3, line = 1.1, at = low_drift_x_nfc, 
+          cex = 1.8, outer = TRUE, font = 2)
+    
+    # High drift: right supercell column (col 2 in layout) - position at horizontal center of right column
+    high_drift_center_x <- (sc2_left + sc2_right) / 2
+    high_drift_x_nfc <- grconvertX(high_drift_center_x, from = "ndc", to = "nfc")
+    mtext("high bound", side = 3, line = 1.1, at = high_drift_x_nfc, 
+          cex = 1.8, outer = TRUE, font = 2)
+    
+    # Left margin: Drift labels (one per supercell row)
+    # Low drift: top supercell row (rows 1-2 in layout) - position at vertical center of top row
+    low_bound_center_y <- (sc1_top + sc1_bottom) / 2
+    low_bound_y_nfc <- grconvertY(low_bound_center_y, from = "ndc", to = "nfc")
+    mtext("low drift", side = 2, line = 0.6, at = low_bound_y_nfc, 
+          cex = 1.8, outer = TRUE, font = 2)
+    
+    # High drift: bottom supercell row (rows 3-4 in layout) - position at vertical center of bottom row
+    high_bound_center_y <- (sc3_top + sc3_bottom) / 2
+    high_bound_y_nfc <- grconvertY(high_bound_center_y, from = "ndc", to = "nfc")
+    mtext("high drift", side = 2, line = 0.6, at = high_bound_y_nfc, 
+          cex = 1.8, outer = TRUE, font = 2)
+    }, error = function(e) {
+      par(old_par)
+      message("Skipping supercell border overlay due to device size constraints: ", e$message)
+    })
+    
+    # Add common outer labels (guard against invalid graphics state on tight devices)
+    tryCatch({
+      mtext("Area Under Curve (AUC)", side = 2, line = 3.8, cex = 2.5, outer = TRUE)
+      mtext(expression(paste("Effect size (", beta, ")")),
+            side = 1, line = 5.7, cex = 2.5, outer = TRUE)
+    }, error = function(e) {
+      message("Skipping outer labels due to graphics device constraints: ", e$message)
+    })
+    
+    if (!is.null(progress_bar)) {
+      close(progress_bar)
+    }
     dev.off()
     cat("AUC grid plot saved to:", file.path(output_dir, output_filename), "\n")
   }
