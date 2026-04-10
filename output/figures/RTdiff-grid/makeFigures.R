@@ -16,6 +16,15 @@ main_dir <- here("output", "RData", "cell-simulation")
 ######################################
 # Contamination effect nested plot
 ######################################
+
+
+# Beta-difference of RT differences (diffdiff)
+plot_RTdiffdiff_nested(main_dir = main_dir, output_dir = output_dir, x_param = "drift_mean", beta_alt_select = 0.2)
+# Alternate param (optional)
+plot_RTdiffdiff_nested(main_dir = main_dir, output_dir = output_dir, x_param = "bound_mean", beta_alt_select = 0.2)
+
+
+
 # Default: x_param = "drift_mean", T = 40, beta = 0
 plot_RTcontamination_nested(main_dir = main_dir, output_dir = output_dir, x_param = "drift_mean")
 # Optional IQR version

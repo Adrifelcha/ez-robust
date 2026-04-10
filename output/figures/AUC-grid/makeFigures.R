@@ -17,12 +17,12 @@ main_dir <- here("output", "RData", "cell-simulation")
 # AUC nested by parameter (new function)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Default settings: x_param = "drift", T = 40, beta = 0.2
-plot_AUC_nested_by_param(main_dir = main_dir, output_dir = output_dir, x_param = "drift")
-plot_AUC_nested_by_param(main_dir = main_dir, output_dir = output_dir, x_param = "drift", t_level_select = 160)
+plot_AUC_nested_by_param(main_dir = main_dir, output_dir = output_dir, x_param = "drift_mean")
+plot_AUC_nested_by_param(main_dir = main_dir, output_dir = output_dir, x_param = "drift_mean", t_level_select = 160)
 
 # Alternate test: x-axis is boundary parameter
-plot_AUC_nested_by_param(main_dir = main_dir, output_dir = output_dir, x_param = "bound")
-plot_AUC_nested_by_param(main_dir = main_dir, output_dir = output_dir, x_param = "bound", t_level_select = 160)
+plot_AUC_nested_by_param(main_dir = main_dir, output_dir = output_dir, x_param = "bound_mean")
+plot_AUC_nested_by_param(main_dir = main_dir, output_dir = output_dir, x_param = "bound_mean", t_level_select = 160)
 
 # Plot nested simulation study results with T = 40 and T = 160
 plot_AUC_nested(main_dir = main_dir, output_dir = output_dir, plot_by = "beta", run_diagnose = FALSE)
