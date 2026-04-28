@@ -18,20 +18,20 @@ main_dir <- here("output", "RData", "cell-simulation")
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Mu_drift on the x-axis, beta = 0.2
 # T = 40 (default)
-plot_AUC_nested_by_param(main_dir = main_dir, output_dir = output_dir, x_param = "drift_mean")
+plot_AUC_byTrueMean(main_dir = main_dir, output_dir = output_dir, x_param = "drift_mean")
 # T = 160
-plot_AUC_nested_by_param(main_dir = main_dir, output_dir = output_dir, x_param = "drift_mean", t_level_select = 160)
+plot_AUC_byTrueMean(main_dir = main_dir, output_dir = output_dir, x_param = "drift_mean", t_level_select = 160)
 
 # Mu_bound on the x-axis, beta = 0.2
 # T = 40 (default)
-plot_AUC_nested_by_param(main_dir = main_dir, output_dir = output_dir, x_param = "bound_mean")
+plot_AUC_byTrueMean(main_dir = main_dir, output_dir = output_dir, x_param = "bound_mean")
 # T = 160
-plot_AUC_nested_by_param(main_dir = main_dir, output_dir = output_dir, x_param = "bound_mean", t_level_select = 160)
+plot_AUC_byTrueMean(main_dir = main_dir, output_dir = output_dir, x_param = "bound_mean", t_level_select = 160)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 2 x 2 AUC as a function of betaweight parameter for one T level, across high/low bound and low/high drift.
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-plot_AUC_nested_2x2(main_dir = main_dir, output_dir = output_dir, run_diagnose = FALSE)
+plot_AUC_2x2Grid(main_dir = main_dir, output_dir = output_dir, run_diagnose = FALSE)
 
 
 ########################################################################################
@@ -47,7 +47,7 @@ output_dir <- here("output", "figures", "AUC-grid", "full-simulation")
 label <- "wideRange"
 main_dir <- here("output", "RData", "full-simulation", "wide-parameters")
 
-plot_AUCgrid_full(main_dir = main_dir, output_dir = output_dir, custom_title_label = label) 
+plot_AUC_fullGrid(main_dir = main_dir, output_dir = output_dir, custom_title_label = label) 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Restricted range of parameter values
@@ -55,6 +55,6 @@ plot_AUCgrid_full(main_dir = main_dir, output_dir = output_dir, custom_title_lab
 label <- "restrictedRange"
 main_dir <- here("output", "RData", "full-simulation", "restricted-parameters")
 
-plot_AUCgrid_full(main_dir = main_dir, output_dir = output_dir, custom_title_label = label) 
+plot_AUC_fullGrid(main_dir = main_dir, output_dir = output_dir, custom_title_label = label) 
 
 
