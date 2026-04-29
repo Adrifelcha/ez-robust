@@ -15,7 +15,7 @@ load_allCustomFunctions()
 # START OUTPUT DIRECTORIES IF NEEDED
 ##########################################################
 # A directory to store the simulation results
-output_dir <- here("demos", "simStudy_cells", "lowDrift-lowBound", "samples")
+output_dir <- here("demos", "simStudy_cells", "lowDrift-lowBound", "samples-T40-fullP")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 # A directory to store the simulation logs
 log_dir <- here("demos", "simStudy_cells", "lowDrift-lowBound", "logs")
@@ -30,14 +30,19 @@ source(here("demos", "simStudy_setup", "simulation_settings.R"))
 # SET CUSTOM SIMULATION SETTINGS
 ##########################################################
 settings$participant_levels <- 160
-settings$true_means$drift_mean <- c(-1, 1)
+#settings$trial_levels <- c(40,160)
+settings$trial_levels <- 40
+settings$true_means$drift_mean <- c(0, 1)
 settings$true_means$bound_mean <- c(2, 2.5)
+
+settings$jagsParameters <- rbind("bound_mean", "drift_mean", "nondt_mean", "betaweight",
+                                "bound", "drift", "nondt")
 
 ################################################################
 # Run simulation study
 ################################################################
 cores       <-  detectCores()
-my.cluster  <-  makeCluster(cores[1]-10)
+my.cluster  <-  makeCluster(cores[1]-4)
 
 registerDoParallel(cl = my.cluster)
 # Then modify your foreach call to use this combine function
