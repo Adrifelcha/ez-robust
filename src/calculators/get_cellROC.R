@@ -1,7 +1,7 @@
 # Custom Function to compute ROC curves for each beta level 
 # against Beta = 0 for a given simulation study design cell
 ###################################################################
-get_cellROCs <- function(resultsFile = NULL, epsilon = 0.05, levelsM = 1000) {
+get_cellROCs <- function(resultsFile = NULL, epsilon = 0.05, levelsM = 1000, run_diagnose = TRUE) {
     
     # Load results file
     load(resultsFile)
@@ -10,7 +10,7 @@ get_cellROCs <- function(resultsFile = NULL, epsilon = 0.05, levelsM = 1000) {
     chains <- simStudy_Beta$beta_chains
     
     # Compute Bayes Factors
-    bf_results <- compute_BF_ROPE(true_betas, chains, epsilon = epsilon)
+    bf_results <- compute_BF_ROPE(true_betas, chains, epsilon = epsilon, run_diagnose = run_diagnose)
     # Get unique beta levels and sort them
     beta_levels <- sort(unique(bf_results$bayes_factors$true_beta))
     

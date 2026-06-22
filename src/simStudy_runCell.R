@@ -11,7 +11,7 @@
 # - settings: settings for the simulation study
 # - Show: whether to show the output
 # - prevent_zero_accuracy: whether to prevent zero accuracy
-# - this.seed: the seed for the random number generator
+# - this.seed: the seed for the random  number generator
 ###############################################################################################################
 simStudy_runCell <- function(p, t, nTPC, d, X, b = NA, settings, Show, prevent_zero_accuracy, redo_if_bad_rhat=FALSE, 
                              rhat_cutoff= 1.05, this.seed, nIter, nBurnin, nThin, nChains){            

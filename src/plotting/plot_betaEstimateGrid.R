@@ -1,15 +1,6 @@
 # Main function to create a grid of plots showing mean posterior beta estimates
 # across simulation conditions with error bars showing +/- 1 SD
-plot_betaEstimateGrid <- function(main_dir, output_dir, y_range = NULL, y_axis_ticks = 6) {
-
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Validate inputs
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  if (!dir.exists(main_dir)) {
-    stop(paste("Main directory does not exist:", main_dir))
-  }
-
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+plot_betaEstimateGrid <- function(main_dir, output_dir, y_range = NULL, y_axis_ticks = 6) { 
   # Create output directory, if it doesn't exist
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   if (!dir.exists(output_dir)) {

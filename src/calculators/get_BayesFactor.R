@@ -2,10 +2,10 @@
 ###################################################
 # Function to compute Bayes Factors using ROPE approach
 # (Same as in our paper)
-compute_BF_ROPE <- function(true_betas, chains, epsilon = 0.05) {
+compute_BF_ROPE <- function(true_betas, chains, epsilon = 0.05, run_diagnose = TRUE) {
   
   # First, try to clean the chains if needed
-  cleaned_result <- diagnose_and_clean_chains(chains, true_betas)
+  cleaned_result <- diagnose_and_clean_chains(chains, true_betas, show_message = run_diagnose)
   
   if (is.list(cleaned_result) && "chains" %in% names(cleaned_result)) {
     # Cleaned result contains both chains and true_betas

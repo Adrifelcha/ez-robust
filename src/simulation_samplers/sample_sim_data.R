@@ -69,7 +69,7 @@ identify_design <- function(nPart, nTrials, nTrialsPerCondition, parameter_set){
 # - nTrials: Total number of trials per participant (used when no conditions)
 # - nTrialsPerCondition: Number of trials per condition (used when conditions exist)
 # - parameter_set: A list containing parameter values for each participant
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~! 
 sample_data <- function(nPart, N, params, separate_datasets = FALSE,
                         contamination_probability = 0, prevent_zero_accuracy = FALSE){
       # Generate dataset for this participant using their specific parameters

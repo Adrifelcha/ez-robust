@@ -19,7 +19,7 @@
 ###################################################################################
 simStudy_setup <- function(nPart, nTrials, nTrialsPerCondition=NULL, true_sdevs, true_means, modelType=NA, 
                            X=NA, Show=TRUE, prevent_zero_accuracy=TRUE, fixedBeta=NA, withinSubject=FALSE,
-                           contamination_probability = 0, separate_datasets = FALSE){
+                            contamination_probability = 0, separate_datasets = FALSE){
 
     if(Show){
         local_settings = list("nPart" = nPart, "nTrials" = nTrials, "modelType" = modelType, "nTrialsPerCondition" = nTrialsPerCondition)

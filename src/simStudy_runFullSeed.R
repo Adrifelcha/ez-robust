@@ -17,7 +17,7 @@
 #   * betaEffect: Results from models with random predictor effects
 #   * reps: Count of repeated simulations due to errors or poor convergence
 ###################################################################################
-
+ 
 simStudy_runFullSeed <- function(seed, settings, forceRun, prevent_zero_accuracy=TRUE,
                                  redo_if_bad_rhat=FALSE, rhat_cutoff=NA, Show=FALSE,
                                  include_EZ_Robust=FALSE){
