@@ -1,3 +1,4 @@
 *.RData
 *.pdf
 .RData
+*.csv

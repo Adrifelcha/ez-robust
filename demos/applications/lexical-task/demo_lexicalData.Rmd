@@ -1,0 +1,905 @@
+---
+title: "Sample Application of the Robust EZBHDDM: <br>A Lexical Decision Task study"
+author: "Adriana F. Chávez De la Peña, Eunice Shin and Joachim Vandekerckhove"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::readthedown:
+    self_contained: true
+    thumbnails: false
+    lightbox: true
+    gallery: true
+    cards: false
+    highlight: tango
+    fig_width: 12 
+    fig_height: 8 
+---
+
+```{r setup, message=FALSE}
+library(rmdformats)
+library(R2jags)
+library(here)
+
+# Set seed for reproducibility
+seed <- 43
+```
+
+# Introduction: Study description
+
+We present a sample application of our Robust implementation of the Hierarchical Bayesian EZ Drift-Diffusion Model (EZHBDM) to open data from the MEGALEX megastudy ([Ferrand et al, 2018](https://doi.org/10.3758/s13428-017-0943-1))
+
+In this study, the authors looked at word recognition performance in a lexical decision task (LDT) where participants had to decide whether a presented stimulus was a *real word* or a *pseudoword* (non-word). The authors compared performance across visual and auditory modalities in a **between-subjects design.**
+
+- **Visual modality**: 96 participants responded to **28,466 French words** and an equal number of pseudowords, presented as text on a computer screen. Participants completed 109 blocks of 260 trials each.
+- **Auditory modality**: 101 participants responded to **17,876 French words** and matched pseudowords, presented as synthesized speech with a female French voice. Participants completed 100 blocks of 177 trials each.
+
+A total of 212 participants completed the MEGALEX experiment. Each participant completed approximately 20 hours of testing across 50-55 sessions. 
+
+### Data used
+
+```{r size, echo=FALSE}
+nP <- 20
+nB <- 60
+```
+
+In this demo, we **only consider the first `r nB` blocks and `r nP` participants for each modality**. This is done with the purpose of simplifying the data cleaning process, given that the original data contains several instances of incomplete or miscoded data.
+
+```{r size, eval=FALSE}
+```
+
+# Loading and Cleaning the Data
+
+The MEGALEX data is available at [lexique.org](http://www.lexique.org/?page_id=366). We worked with the `Megalex raw data.zip` (75 MB) file, from which we extracted two main files: `megalex_rawdata_auditory.csv` and `megalex_rawdata_visual.csv`.
+
+```{r load_data}
+data_folder <- here("demos", "applications", "lexical-task", "data")
+
+# Load the raw AUDITORY data
+data_auditory <- read.csv(file.path(data_folder, "megalex_rawdata_auditory.csv"), sep = "\t")
+
+# Only first nP participants for each modality
+aud_sub <- unique(data_auditory$SUBJECT)[1:nP]
+data_auditory <- data_auditory[data_auditory$SUBJECT %in% aud_sub, ]
+# Only first nB blocks for each participant
+data_auditory <- data_auditory[data_auditory$BLOCK <= nB, ]
+
+# Load the raw VISUAL data
+data_visual <- read.csv(file.path(data_folder, "megalex_rawdata_visual.csv"), sep = "\t")
+# Only first nP participants for each modality
+vis_sub <- unique(data_visual$SUBJECT)[1:nP]
+data_visual <- data_visual[data_visual$SUBJECT %in% vis_sub, ]
+# Only first nB blocks for each participant
+data_visual <- data_visual[data_visual$BLOCK <= nB, ]
+```
+
+For simplicity, we **combine the two datasets into a single data frame** containing the accuracy and response time data, along with relevant ID information such as the subject ID, the block number, the stimulus category (word or pseudoword), and the modality (visual or auditory).
+
+```{r}
+# First, we recode the subject ID of the auditory dataset
+# since both data files use the same subject ID scheme,
+# despite the between-subjects design.
+data_auditory$SUBJECT <- as.numeric(data_auditory$SUBJECT) + 1000
+
+# Next, we isolate relevant existing columns
+keep_columns <- c("SUBJECT", "BLOCK", "CORRECT", "RT")
+data_visual <- data_visual[,keep_columns]
+data_auditory <- data_auditory[,keep_columns]
+# And add a modality column
+data_visual$MODALITY <- 1
+data_auditory$MODALITY <- 2
+
+# Finally, we combine the datasets
+raw_data <- rbind(data_auditory, data_visual)
+```
+
+This leads to a total of `r nrow(raw_data)` trials, with `r length(unique(raw_data$SUBJECT))` participants split evenly across the two modalities:
+
+```{r}
+# Participants per modality
+tapply(raw_data$SUBJECT, raw_data$MODALITY, function(x) length(unique(x)))
+```
+
+Furthermore, we confirmed that each participant completed the same number of trials in each block as expected for each of the two modalities.    
+
+```{r trials_per_cell_raw}
+# Check trials per cell
+check_cells <- aggregate(RT ~ SUBJECT + BLOCK, data = raw_data, length)
+table(check_cells[,3])
+```
+
+### Data Cleaning
+
+**Remove extreme RT trials**
+
+In the MEGALEX study, the authors identified trials with a response time less than 300ms or greater than 2000ms as outliers and removed them from the analysis.
+
+```{r}
+data_clean <- raw_data[raw_data$RT >= 300 & raw_data$RT <= 2000,]
+```
+
+By replicating this cleaning step, we remove a total of `r nrow(raw_data) - nrow(data_clean)` trials.
+
+```{r, fig.width=8, fig.height=5}
+hist(raw_data$RT, col="darkred", main="", xlab="Response Time (ms)")
+hist(data_clean$RT, add = TRUE, col = "forestgreen")
+abline(v = c(300, 2000), lty = 2, lwd = 2, col = "black")
+```
+
+# Get Summary Statistics
+
+We now compute both standard and robust summary statistics for every participant across the auditory and visual modalities. To make this endeavor easier, we define a custom function.
+
+```{r}
+get_ez_summaries <- function(subset) {
+    # Convert RT from milliseconds to seconds
+    RT_sec <- subset$RT / 1000
+    return(data.frame(
+        subject   = unique(subset$SUBJECT),
+        block     = unique(subset$BLOCK),
+        modality  = unique(subset$MODALITY),
+        nTrials   = nrow(subset),
+        nCorrect  = sum(subset$CORRECT),
+        accRate   = mean(subset$CORRECT),
+        meanRT    = mean(RT_sec),
+        varRT     = var(RT_sec),
+        medianRT  = median(RT_sec),
+        varRT_iqr = (IQR(RT_sec) / 1.35)^2
+    ))
+}
+```
+
+### Compute summary statistics from data
+
+We compute summary statistics **per participant per block**.
+
+```{r}
+# Get unique participant-block combinations (same across raw and clean)
+unique_cells <- unique(raw_data[, c("SUBJECT", "BLOCK")])
+
+# Initialize empty data frames
+summaries_raw   <- data.frame()
+summaries_clean <- data.frame()
+
+# Compute summaries for each participant-block cell
+for (i in 1:nrow(unique_cells)) {
+    subj  <- unique_cells$SUBJECT[i]
+    block <- unique_cells$BLOCK[i]
+    
+    # Raw data
+    cell_raw <- raw_data[raw_data$SUBJECT == subj & raw_data$BLOCK == block, ]
+    if (nrow(cell_raw) >= 10) {
+        summ <- get_ez_summaries(cell_raw)
+        summaries_raw <- rbind(summaries_raw, summ)
+    }
+    
+    # Clean data
+    cell_clean <- data_clean[data_clean$SUBJECT == subj & data_clean$BLOCK == block, ]
+    if (nrow(cell_clean) >= 10) {
+        summ <- get_ez_summaries(cell_clean)
+        summaries_clean <- rbind(summaries_clean, summ)
+    }
+}
+```
+
+# The Model
+
+## The EZ Hierarchical Bayesian DDM (EZHBDDM)
+
+The first component of our model is the "proxy" model that we introduced in previous work (Chávez De la Peña & Vandekerckhove, 2025) allowing for the Bayesian implementation of the EZ-DDM: a reformulation of the three-parameter DDM that uses the method of moments to map summary statistics of the observed data to theoretical moments expressed as functions of the model parameters: drift rate $\nu$, boundary separation $\alpha$, and non-decision time $\tau$. 
+
+\begin{align*}
+PC &= \frac{1}{\exp(-\alpha\nu)+1}\\
+MRT &= \tau + \frac{\alpha}{2\nu}\frac{\exp(-\alpha\nu)-1}{\exp(-\alpha\nu)+1}\\
+PRT &= \frac{\alpha}{2\nu^3}\left\{\frac{1-2\alpha\nu\exp(-\alpha\nu)-\exp(-\alpha\nu)^2}{(\exp(-\alpha\nu)+1)^2}\right\}
+\end{align*}
+
+Our proxy model uses the sampling distributions for these three summary statistics (the number of correct responses $\dot{T}$, a measure of central tendency $\dot{M}$ and dispersion $\dot{V}$ of the response times) to facilitate a generative model. 
+
+\begin{align*}
+\dot{T} &\sim \text{Binomial}(PC, N)\\
+\dot{V} &\sim \text{Normal}\left(\frac{1}{PRT}, \frac{N-1}{2(PRT)^2}\right)\\
+\dot{M} &\sim \text{Normal}(MRT, PRT \times N)
+\end{align*}
+
+## The Robust Extension
+
+The **standard EZHBDDM** uses the sample mean and variance of RT as the summary statistics $\dot{M}$ and $\dot{V}$. These estimators are sensitive to outliers, which are common in response time data.
+
+The **robust EZHBDDM** replaces these with more robust estimators: the median RT (replacing the mean RT) and the IQR-derived variance (replacing the sample variance).
+
+The same JAGS model can be used for both approaches; the only difference is which summary statistics we pass to the model.
+
+## Metaregression Structure
+
+We incorporate the following effects:
+
+- **Modality effect on drift rate** ($\beta_0$): Captures the difference in drift rate between visual and auditory modalities.
+- **Modality and block effects on boundary separation** ($\beta_1$, $\beta_2$): Captures the difference in boundary separation between visual and auditory modalities, as well as the difference in boundary separation across blocks.
+- **Modality effect on non-decision time** ($\beta_3$): Captures the difference in non-decision time between visual and auditory modalities.
+
+\begin{align*}
+\nu^{\text{pred}}_j &= \mu_\nu + \beta_0 X_j, \quad\quad\quad j = 1,2\\
+\tau^{\text{pred}}_j &= \mu_\tau + \beta_3 X_j\\
+\alpha^{\text{pred}}_{b,j} &= \mu_\alpha + \beta_1 X_j + \beta_2 Y_b,\quad\quad b = 1,\ldots,B, j = 1,2\\
+\nu_i &\sim \mbox{Normal}(\nu^{\text{pred}}_{\text{mod}[i]}, \sigma_\nu)\\
+\tau_i &\sim \mbox{Normal}(\tau^{\text{pred}}_{\text{mod}[i]}, \sigma_\tau)\\
+\alpha_i &\sim \mbox{Normal}(\alpha^{\text{pred}}_{\text{block}[i],\,\text{mod}[i]}, \sigma_\alpha)
+\end{align*}
+
+where $X_j$ is the modality contrast: $X_1 = 0.5$ (visual), $X_2 = -0.5$ (auditory), and $Y_b$ is the block number: $Y_b = b$ for $b = 1,\ldots,B$
+
+### Write the Model in JAGS
+
+```{r}
+modelFile <- here("output", "BUGS-models", "demo_lexical_model.bug")
+
+write("
+model {
+    # Wide Priors for hierarchical DDM parameters 
+    bound_mean ~ dnorm(0.12, pow(0.10, -2)) T(0.01, )
+    drift_mean ~ dnorm(2.00, pow(2.00, -2))
+    nondt_mean ~ dnorm(0.30, pow(0.15, -2)) T(0.05, )    
+    bound_sdev ~ dunif(0.01, 0.50)
+    drift_sdev ~ dunif(0.10, 5.00)
+    nondt_sdev ~ dunif(0.01, 0.50)
+    
+    # Wide Priors for Regression coefficients
+    beta0 ~ dnorm(0.00, pow(2.00, -2))   # Modality effect on drift
+    beta1 ~ dnorm(0.00, pow(0.10, -2))   # Modality effect on boundary
+    beta2 ~ dnorm(0.00, pow(0.05, -2))   # Block effect on boundary
+    beta3 ~ dnorm(0.00, pow(0.10, -2))   # Modality effect on non-decision time
+    
+    # Predicted means for each parameter
+    for (j in 1:2) {
+        drift_pred[j] = drift_mean + beta0 * X[j]
+        nondt_pred[j] = nondt_mean + beta3 * X[j]
+        for (b in 1:nBlocks) {
+            bound_pred[b, j] = bound_mean + beta1 * X[j] + beta2 * Y[b]
+        }
+    }
+    
+    # Person-by-block sampling model
+    for (i in 1:N) {
+        drift[i] ~ dnorm(drift_pred[mod[i]], pow(drift_sdev, -2))
+        bound[i] ~ dnorm(bound_pred[block[i], mod[i]], pow(bound_sdev, -2)) T(0.01, )
+        nondt[i] ~ dnorm(nondt_pred[mod[i]], pow(nondt_sdev, -2)) T(0.05, )
+        
+        # Forward EZ-DDM equations
+        ey[i] = exp(-bound[i] * drift[i])
+        Pc[i] = 1 / (1 + ey[i])
+        PRT[i] = 2 * pow(drift[i], 3) / bound[i] * 
+                 pow(ey[i] + 1, 2) / (2 * -bound[i] * 
+                 drift[i] * ey[i] - ey[i] * ey[i] + 1)
+        MDT[i] = (bound[i] / (2 * drift[i])) * (1 - ey[i]) / (1 + ey[i])
+        MRT[i] = MDT[i] + nondt[i]
+        
+        # Sampling distributions
+        nCorrect[i] ~ dbin(Pc[i], nTrials[i])
+        vRT[i] ~ dnorm(1/PRT[i], 0.5 * (nTrials[i] - 1) * PRT[i] * PRT[i])
+        mRT[i] ~ dnorm(MRT[i], PRT[i] * nTrials[i])
+    }
+}", modelFile)
+```
+
+**Note:** This model uses `mRT` and `vRT` as placeholders for the observed RT statistics. To fit the standard model, we will pass mean and variance; to fit the robust model, we will pass median and IQR-derived variance.
+
+# JAGS
+
+### Specify JAGS setup
+
+```{r}
+# JAGS setup
+n.chains  <- 4
+n.iter    <- 2000
+n.burnin  <- 500
+n.thin    <- 1
+
+# Parameters to track
+parameters <- c('beta0', 'beta1', 'beta2', 'beta3',
+                'drift_mean', 'bound_mean', 'nondt_mean',
+                'drift', 'drift_pred',
+                'bound', 'bound_pred',
+                'nondt', 'nondt_pred')
+```
+
+
+### Prepare data to pass to JAGS
+
+We prepare four data lists to compare Standard vs Robust EZ-DDM across Raw vs Clean data.
+
+From each summary row we pass **indices** (`mod_id`, `block`) to pick which shared prediction to use. JAGS also needs a length-2 `X` for the modality loop (`j = 1, 2`). That is just the unique `mod_code` values already stored in the summaries, ordered by `mod_id` — not a new coding scheme, and not the full length-N column (which would make `X[1]`/`X[2]` mean “first two rows,” not “two modalities”). Block enters as `Y[b] = b` inside the model.
+
+```{r}
+X <- c(0.5, -0.5)
+Y <- unique(c(summaries_raw$block, summaries_clean$block))
+
+# Base data lists (standard uses mean/var)
+raw_standard <- list(
+    N        = nrow(summaries_raw),
+    nBlocks  = nB,
+    nTrials  = summaries_raw$nTrials,
+    nCorrect = summaries_raw$nCorrect,
+    mRT      = summaries_raw$meanRT,
+    vRT      = summaries_raw$varRT,
+    mod      = summaries_raw$modality,
+    block    = summaries_raw$block,
+    X        = X,
+    Y        = Y
+)
+
+clean_standard <- list(
+    N        = nrow(summaries_clean),
+    nBlocks  = nB,
+    nTrials  = summaries_clean$nTrials,
+    nCorrect = summaries_clean$nCorrect,
+    mRT      = summaries_clean$meanRT,
+    vRT      = summaries_clean$varRT,
+    mod      = summaries_clean$modality,
+    block    = summaries_clean$block,
+    X        = X,
+    Y        = Y
+)
+
+# Robust versions (swap mRT and vRT)
+raw_robust <- raw_standard
+raw_robust$mRT <- summaries_raw$medianRT
+raw_robust$vRT <- summaries_raw$varRT_iqr
+
+clean_robust <- clean_standard
+clean_robust$mRT <- summaries_clean$medianRT
+clean_robust$vRT <- summaries_clean$varRT_iqr
+
+# Combine into list of lists
+jags_data_list <- list(
+    standard_raw   = raw_standard,
+    standard_clean = clean_standard,
+    robust_raw     = raw_robust,
+    robust_clean   = clean_robust
+)
+
+condition_names <- names(jags_data_list)
+```
+
+```{r, eval=FALSE, echo=FALSE}
+condition_names <- c("standard_raw", "standard_clean", "robust_raw", "robust_clean")
+```
+
+### Run JAGS
+
+**Note:** If you previously fitted an older version of this model, delete the existing `samples_*.RData` files in this folder before knitting so JAGS re-fits.
+
+```{r}
+set.seed(seed)
+save_folder <- here("demos", "applications", "lexical-task")
+
+# Check if all .RData files exist
+files_exist <- sapply(condition_names, function(nm) {
+    file.exists(file.path(save_folder, paste0("samples_", nm, ".RData")))
+})
+
+# Run JAGS only if at least one file is missing
+if (!all(files_exist)) {
+    for (cond in condition_names) {
+        rdata_file <- file.path(save_folder, paste0("samples_", cond, ".RData"))
+        
+        if (!file.exists(rdata_file)) {
+            samples <- jags(
+                data = jags_data_list[[cond]],
+                parameters.to.save = parameters,
+                model.file = modelFile,
+                n.chains = n.chains,
+                n.iter = n.iter,
+                n.burnin = n.burnin,
+                n.thin = n.thin,
+                DIC = TRUE
+            )
+            assign(paste0("samples_", cond), samples)
+            save(list = paste0("samples_", cond), file = rdata_file)
+        }
+    }
+}
+
+# Load all files
+for (cond in condition_names) {
+    rdata_file <- file.path(save_folder, paste0("samples_", cond, ".RData"))
+    load(rdata_file)
+}
+```
+
+# Convergence Diagnostics
+
+```{r}
+getRhat <- function(posterior_chains, n.chains = NA) {
+    if (is.vector(posterior_chains)) {
+        if (is.na(n.chains)) {
+            stop("Please specify the number of chains")
+        }
+        n.iter <- length(posterior_chains) / n.chains
+        posterior_chains <- matrix(posterior_chains, ncol = n.chains, 
+                                   nrow = n.iter, byrow = FALSE)
+    }
+    n.iter <- nrow(posterior_chains)
+    n.chains <- ncol(posterior_chains)
+    
+    chainMean <- apply(posterior_chains, 2, mean)
+    overall_mean <- mean(chainMean)
+    B <- n.iter * var(chainMean)
+    chainVar <- apply(posterior_chains, 2, var)
+    W <- mean(chainVar)
+    Z <- ((n.iter - 1) / n.iter) * W + (1 / n.iter) * B
+    Rhat <- sqrt(Z / W)
+    return(Rhat)
+}
+```
+
+```{r}
+# Check convergence for all models
+check_convergence <- function(samples, name) {
+    rhats <- apply(samples$BUGSoutput$sims.array, 3, getRhat)
+    cat(name, "- Max Rhat:", round(max(rhats), 3), 
+        "| Params with Rhat > 1.05:", sum(rhats > 1.05), "\n")
+}
+
+check_convergence(samples_standard_raw, "Standard + Raw")
+check_convergence(samples_standard_clean, "Standard + Clean")
+check_convergence(samples_robust_raw, "Robust + Raw")
+check_convergence(samples_robust_clean, "Robust + Clean")
+```
+
+# Results: Comparing Standard vs Robust EZ-DDM
+
+The key demonstration is that the **Robust EZ-DDM** produces similar estimates whether we use raw or cleaned data, while the **Standard EZ-DDM** shows larger differences between raw and clean.
+
+## Extract Key Parameters
+
+```{r}
+# Extract beta0 (modality effect on drift) from all 4 models
+beta0_standard_raw   <- as.vector(samples_standard_raw$BUGSoutput$sims.list$beta0)
+beta0_standard_clean <- as.vector(samples_standard_clean$BUGSoutput$sims.list$beta0)
+beta0_robust_raw     <- as.vector(samples_robust_raw$BUGSoutput$sims.list$beta0)
+beta0_robust_clean   <- as.vector(samples_robust_clean$BUGSoutput$sims.list$beta0)
+
+# Extract beta2 (block effect on boundary) from all 4 models
+beta2_standard_raw   <- as.vector(samples_standard_raw$BUGSoutput$sims.list$beta2)
+beta2_standard_clean <- as.vector(samples_standard_clean$BUGSoutput$sims.list$beta2)
+beta2_robust_raw     <- as.vector(samples_robust_raw$BUGSoutput$sims.list$beta2)
+beta2_robust_clean   <- as.vector(samples_robust_clean$BUGSoutput$sims.list$beta2)
+```
+
+## Modality Effect on Drift Rate ($\beta_0$)
+
+```{r, echo=FALSE, eval=FALSE}
+cat("STANDARD EZ-DDM:\n")
+cat("  Raw data:   Mean =", round(mean(beta0_standard_raw), 4), 
+    " | 95% CI:", round(quantile(beta0_standard_raw, c(0.025, 0.975)), 4), "\n")
+cat("  Clean data: Mean =", round(mean(beta0_standard_clean), 4), 
+    " | 95% CI:", round(quantile(beta0_standard_clean, c(0.025, 0.975)), 4), "\n")
+cat("  Difference (Raw - Clean):", round(mean(beta0_standard_raw) - mean(beta0_standard_clean), 4), "\n\n")
+
+cat("ROBUST EZ-DDM:\n")
+cat("  Raw data:   Mean =", round(mean(beta0_robust_raw), 4), 
+    " | 95% CI:", round(quantile(beta0_robust_raw, c(0.025, 0.975)), 4), "\n")
+cat("  Clean data: Mean =", round(mean(beta0_robust_clean), 4), 
+    " | 95% CI:", round(quantile(beta0_robust_clean, c(0.025, 0.975)), 4), "\n")
+cat("  Difference (Raw - Clean):", round(mean(beta0_robust_raw) - mean(beta0_robust_clean), 4), "\n")
+```
+
+```{r, fig.align='center', fig.width=10, fig.height=5}
+nBreaks <- 40
+raw.color <- "#E74C3C"
+clean.color <- "#3498DB"
+
+par(mfrow = c(1, 2), mai = c(0.8, 0.8, 0.6, 0.2), oma = c(0, 0, 2.5, 0))
+
+# Standard EZ-DDM
+xlim_std <- range(c(beta0_standard_raw, beta0_standard_clean))
+hist(beta0_standard_raw, freq = FALSE, breaks = nBreaks, col = adjustcolor(raw.color, 0.5), 
+     border = NA, main = "Standard EZ-DDM", xlab = "Beta0 (modality effect on drift)",
+     xlim = xlim_std)
+hist(beta0_standard_clean, freq = FALSE, breaks = nBreaks, col = adjustcolor(clean.color, 0.5), 
+     border = NA, add = TRUE)
+lines(density(beta0_standard_raw), lwd = 3, col = raw.color)
+lines(density(beta0_standard_clean), lwd = 3, col = clean.color)
+abline(v = 0, lty = 2, col = "gray40")
+legend("topright", c("Raw data", "Clean data"), fill = c(raw.color, clean.color), bty = "n")
+
+# Robust EZ-DDM
+xlim_rob <- range(c(beta0_robust_raw, beta0_robust_clean))
+hist(beta0_robust_raw, freq = FALSE, breaks = nBreaks, col = adjustcolor(raw.color, 0.5), 
+     border = NA, main = "Robust EZ-DDM", xlab = "Beta0 (modality effect on drift)",
+     xlim = xlim_rob)
+hist(beta0_robust_clean, freq = FALSE, breaks = nBreaks, col = adjustcolor(clean.color, 0.5), 
+     border = NA, add = TRUE)
+lines(density(beta0_robust_raw), lwd = 3, col = raw.color)
+lines(density(beta0_robust_clean), lwd = 3, col = clean.color)
+abline(v = 0, lty = 2, col = "gray40")
+legend("topright", c("Raw data", "Clean data"), fill = c(raw.color, clean.color), bty = "n")
+
+mtext("Modality Effect on Drift: Raw vs Clean Data", outer = TRUE, line = 1, cex = 1.2, font = 2)
+```
+
+## Block Effect on Boundary Separation ($\beta_2$)
+
+```{r, echo=FALSE, eval=FALSE}
+cat("STANDARD EZ-DDM:\n")
+cat("  Raw data:   Mean =", round(mean(beta2_standard_raw), 4), 
+    " | 95% CI:", round(quantile(beta2_standard_raw, c(0.025, 0.975)), 4), "\n")
+cat("  Clean data: Mean =", round(mean(beta2_standard_clean), 4), 
+    " | 95% CI:", round(quantile(beta2_standard_clean, c(0.025, 0.975)), 4), "\n")
+cat("  Difference (Raw - Clean):", round(mean(beta2_standard_raw) - mean(beta2_standard_clean), 4), "\n\n")
+
+cat("ROBUST EZ-DDM:\n")
+cat("  Raw data:   Mean =", round(mean(beta2_robust_raw), 4), 
+    " | 95% CI:", round(quantile(beta2_robust_raw, c(0.025, 0.975)), 4), "\n")
+cat("  Clean data: Mean =", round(mean(beta2_robust_clean), 4), 
+    " | 95% CI:", round(quantile(beta2_robust_clean, c(0.025, 0.975)), 4), "\n")
+cat("  Difference (Raw - Clean):", round(mean(beta2_robust_raw) - mean(beta2_robust_clean), 4), "\n")
+```
+
+```{r, fig.align='center', fig.width=10, fig.height=5}
+nBreaks <- 40
+raw.color <- "#E74C3C"
+clean.color <- "#3498DB"
+
+par(mfrow = c(1, 2), mai = c(0.8, 0.8, 0.6, 0.2), oma = c(0, 0, 2.5, 0))
+
+# Standard EZ-DDM
+xlim_std <- range(c(beta2_standard_raw, beta2_standard_clean))
+hist(beta2_standard_raw, freq = FALSE, breaks = nBreaks, col = adjustcolor(raw.color, 0.5), 
+     border = NA, main = "Standard EZ-DDM", xlab = "Beta2 (block effect on boundary)",
+     xlim = xlim_std)
+hist(beta2_standard_clean, freq = FALSE, breaks = nBreaks, col = adjustcolor(clean.color, 0.5), 
+     border = NA, add = TRUE)
+lines(density(beta2_standard_raw), lwd = 3, col = raw.color)
+lines(density(beta2_standard_clean), lwd = 3, col = clean.color)
+abline(v = 0, lty = 2, col = "gray40")
+legend("topright", c("Raw data", "Clean data"), fill = c(raw.color, clean.color), bty = "n")
+
+# Robust EZ-DDM
+xlim_rob <- range(c(beta2_robust_raw, beta2_robust_clean))
+hist(beta2_robust_raw, freq = FALSE, breaks = nBreaks, col = adjustcolor(raw.color, 0.5), 
+     border = NA, main = "Robust EZ-DDM", xlab = "Beta2 (block effect on boundary)",
+     xlim = xlim_rob)
+hist(beta2_robust_clean, freq = FALSE, breaks = nBreaks, col = adjustcolor(clean.color, 0.5), 
+     border = NA, add = TRUE)
+lines(density(beta2_robust_raw), lwd = 3, col = raw.color)
+lines(density(beta2_robust_clean), lwd = 3, col = clean.color)
+abline(v = 0, lty = 2, col = "gray40")
+legend("topright", c("Raw data", "Clean data"), fill = c(raw.color, clean.color), bty = "n")
+
+mtext("Block Effect on Boundary: Raw vs Clean Data", outer = TRUE, line = 1, cex = 1.2, font = 2)
+```
+
+## Boundary Separation Across Blocks
+
+We plot predicted and recovered boundary separation across blocks for a few participants, using only the **Robust EZ-DDM**, and comparing **raw** vs **clean** data.
+
+```{r}
+# Posterior samples for the predicted boundary separation (iterations x nBlocks x 2 modalities)
+bound_pred_samples <- samples_robust_clean$BUGSoutput$sims.list$bound_pred
+
+# Mean prediction and 95% CI of the prediction itself, varying continuously by block
+bound_pred_mean  <- apply(bound_pred_samples, c(2, 3), mean)
+bound_pred_lower <- apply(bound_pred_samples, c(2, 3), quantile, probs = 0.025)
+bound_pred_upper <- apply(bound_pred_samples, c(2, 3), quantile, probs = 0.975)
+
+# Posterior mean bound[i] for each participant-block cell
+bound_recovered <- apply(samples_robust_clean$BUGSoutput$sims.list$bound, 2, mean)
+plot_data <- summaries_clean
+plot_data$bound_mean <- bound_recovered
+
+# Aggregate across participants per block x modality: mean +/- 1.96*SE
+agg_recovered <- aggregate(bound_mean ~ block + modality, data = plot_data,
+                            FUN = function(x) c(mean = mean(x), se = sd(x) / sqrt(length(x))))
+agg_recovered <- do.call(data.frame, agg_recovered)
+names(agg_recovered) <- c("block", "modality", "mean", "se")
+agg_recovered$lower <- agg_recovered$mean - 1.96 * agg_recovered$se
+agg_recovered$upper <- agg_recovered$mean + 1.96 * agg_recovered$se
+```
+
+```{r, fig.align='center', fig.width=12, fig.height=8}
+vis.bckg <- "#faf0e1"
+aud.bckg <- "#fdf6d8"
+predicted.color <- "#FF8B0F"
+ci.color <- adjustcolor("#FF8B0F", 0.25)
+recovered.color <- "#83460A"
+
+gap <- 3
+blocks     <- 1:nB
+x_visual   <- blocks
+x_auditory <- blocks + nB + gap
+
+vis_agg <- agg_recovered[agg_recovered$modality == 1, ]
+aud_agg <- agg_recovered[agg_recovered$modality == 2, ]
+vis_agg <- vis_agg[order(vis_agg$block), ]
+aud_agg <- aud_agg[order(aud_agg$block), ]
+
+ylim_range <- range(c(bound_pred_lower, bound_pred_upper,
+                       agg_recovered$lower, agg_recovered$upper))
+xlim_range <- c(min(x_visual) - 0.5, max(x_auditory) + 0.5)
+y_lab_pos  <- ylim_range[2] - 0.05 * diff(ylim_range)
+
+par(pty = "m", mfrow = c(1, 1), mai = c(1.1, 0.8, 0.5, 0.2), oma = c(0, 0, 0, 0))
+
+plot(NULL, xlim = xlim_range, ylim = ylim_range, ann = FALSE, axes = FALSE,
+     xaxs = "i", yaxs = "i")
+
+polygon(c(min(x_visual) - 0.5, max(x_visual) + 0.5, max(x_visual) + 0.5, min(x_visual) - 0.5),
+        c(ylim_range[1], ylim_range[1], ylim_range[2], ylim_range[2]),
+        col = vis.bckg, border = NA)
+polygon(c(min(x_auditory) - 0.5, max(x_auditory) + 0.5, max(x_auditory) + 0.5, min(x_auditory) - 0.5),
+        c(ylim_range[1], ylim_range[1], ylim_range[2], ylim_range[2]),
+        col = aud.bckg, border = NA)
+
+polygon(c(x_visual, rev(x_visual)),
+        c(bound_pred_lower[, 1], rev(bound_pred_upper[, 1])),
+        col = ci.color, border = NA)
+polygon(c(x_auditory, rev(x_auditory)),
+        c(bound_pred_lower[, 2], rev(bound_pred_upper[, 2])),
+        col = ci.color, border = NA)
+
+lines(x_visual, bound_pred_mean[, 1], lwd = 4, col = predicted.color)
+lines(x_auditory, bound_pred_mean[, 2], lwd = 4, col = predicted.color)
+
+arrows(x_visual, vis_agg$lower, x_visual, vis_agg$upper,
+       length = 0.05, angle = 90, code = 3, col = recovered.color, lwd = 1.2)
+points(x_visual, vis_agg$mean, pch = 16, col = recovered.color, cex = 1)
+
+arrows(x_auditory, aud_agg$lower, x_auditory, aud_agg$upper,
+       length = 0.05, angle = 90, code = 3, col = recovered.color, lwd = 1.2)
+points(x_auditory, aud_agg$mean, pch = 16, col = recovered.color, cex = 1)
+
+axis(1, at = x_visual,   labels = blocks)
+axis(1, at = x_auditory, labels = blocks)
+axis(2, las = 2)
+mtext("Boundary separation", 2, line = 2.5)
+mtext("Block", 1, line = 3)
+
+text(max(x_visual) - 0.5,   y_lab_pos, "Visual",   adj = c(1, 1), cex = 1.3, font = 2)
+text(max(x_auditory) - 0.5, y_lab_pos, "Auditory", adj = c(1, 1), cex = 1.3, font = 2)
+
+mtext("Predicted and Recovered Boundary Separation by Block", 3, line = 1, cex = 1.4, font = 2)
+```
+
+```{r, echo=FALSE}
+# Reduced gap between panels, bigger label fonts
+gap <- 1.2
+blocks     <- 1:nB
+x_visual   <- blocks
+x_auditory <- blocks + nB + gap
+
+vis_agg <- agg_recovered[agg_recovered$modality == 1, ]
+aud_agg <- agg_recovered[agg_recovered$modality == 2, ]
+vis_agg <- vis_agg[order(vis_agg$block), ]
+aud_agg <- aud_agg[order(aud_agg$block), ]
+
+ylim_range <- range(c(bound_pred_lower, bound_pred_upper,
+                       agg_recovered$lower, agg_recovered$upper))
+xlim_range <- c(min(x_visual) - 0.5, max(x_auditory) + 0.5)
+y_lab_pos  <- ylim_range[2] - 0.05 * diff(ylim_range)
+
+vis.bckg <- "#faf0e1"
+aud.bckg <- "#fdf6d8"
+predicted.color <- "#FF8B0F"
+ci.color <- adjustcolor("#FF8B0F", 0.25)
+recovered.color <- "#83460A"
+
+make_fig2 <- function() {
+    par(pty = "m", mfrow = c(1, 1), mai = c(1.3, 1.1, 0.6, 0.3), oma = c(0, 0, 0, 0))
+
+    plot(NULL, xlim = xlim_range, ylim = ylim_range, ann = FALSE, axes = FALSE,
+         xaxs = "i", yaxs = "i")
+
+    polygon(c(min(x_visual) - 0.5, max(x_visual) + 0.5, max(x_visual) + 0.5, min(x_visual) - 0.5),
+            c(ylim_range[1], ylim_range[1], ylim_range[2], ylim_range[2]),
+            col = vis.bckg, border = NA)
+    polygon(c(min(x_auditory) - 0.5, max(x_auditory) + 0.5, max(x_auditory) + 0.5, min(x_auditory) - 0.5),
+            c(ylim_range[1], ylim_range[1], ylim_range[2], ylim_range[2]),
+            col = aud.bckg, border = NA)
+
+    polygon(c(x_visual, rev(x_visual)),
+            c(bound_pred_lower[, 1], rev(bound_pred_upper[, 1])),
+            col = ci.color, border = NA)
+    polygon(c(x_auditory, rev(x_auditory)),
+            c(bound_pred_lower[, 2], rev(bound_pred_upper[, 2])),
+            col = ci.color, border = NA)
+
+    lines(x_visual, bound_pred_mean[, 1], lwd = 4, col = predicted.color)
+    lines(x_auditory, bound_pred_mean[, 2], lwd = 4, col = predicted.color)
+
+    arrows(x_visual, vis_agg$lower, x_visual, vis_agg$upper,
+           length = 0.05, angle = 90, code = 3, col = recovered.color, lwd = 1.2)
+    points(x_visual, vis_agg$mean, pch = 16, col = recovered.color, cex = 1)
+
+    arrows(x_auditory, aud_agg$lower, x_auditory, aud_agg$upper,
+           length = 0.05, angle = 90, code = 3, col = recovered.color, lwd = 1.2)
+    points(x_auditory, aud_agg$mean, pch = 16, col = recovered.color, cex = 1)
+
+    axis(1, at = x_visual,   labels = blocks, cex.axis = 1.3)
+    axis(1, at = x_auditory, labels = blocks, cex.axis = 1.3)
+    axis(2, las = 2, cex.axis = 1.3)
+    mtext("Boundary separation", 2, line = 3.5, cex = 1.5)
+    mtext("Block", 1, line = 3.5, cex = 1.5)
+
+    text(max(x_visual) - 0.5,   y_lab_pos, "Visual",   adj = c(1, 1), cex = 1.3, font = 2)
+    text(max(x_auditory) - 0.5, y_lab_pos, "Auditory", adj = c(1, 1), cex = 1.3, font = 2)
+
+    mtext("Predicted and Recovered Boundary Separation by Block", 3, line = 1, cex = 1.5, font = 2)
+
+    legend("topleft", inset = c(0.02, 0.02),
+           legend = c("Predicted", "Recovered (mean \u00B1 95% CI)"),
+           col = c(predicted.color, recovered.color),
+           lwd = c(4, 1.2), pch = c(NA, 16), lty = c(1, NA),
+           bty = "n", cex = 1.05, seg.len = 2)
+}
+
+# Save as PDF
+save_folder <- here("demos", "applications", "lexical-task")
+pdf(file.path(save_folder, "fig2.pdf"), width = 10, height = 6)
+make_fig2()
+dev.off()
+
+# Save as PNG
+png(file.path(save_folder, "fig2.png"), width = 10, height = 6, units = "in", res = 300)
+make_fig2()
+dev.off()
+
+# Save as EPS
+postscript(file.path(save_folder, "fig2.eps"), width = 10, height = 6,
+           horizontal = FALSE, paper = "special")
+make_fig2()
+dev.off()
+```
+
+## Modality Effects on Model Parameters
+
+Figure 3 compares posterior distributions of the modality regression coefficients for the **Robust EZ-DDM** on **clean data** (filled density) and **raw data** (darker dotted line). The analysis uses the first `r nP` participants and `r nB` blocks per modality from the MEGALEX subset.
+
+```{r, echo=FALSE}
+drift.color <- "#2E8B57"   # green
+bound.color <- "#FF8B0F"   # orange
+nondt.color <- "#1F77B4"   # blue
+
+darken_color <- function(col, amt = 0.45) {
+    c <- col2rgb(col, alpha = FALSE) / 255
+    rgb(c[1] * (1 - amt), c[2] * (1 - amt), c[3] * (1 - amt))
+}
+
+# Posterior samples: primary = robust + clean; overlay = robust + raw
+beta0_robust_clean <- as.vector(samples_robust_clean$BUGSoutput$sims.list$beta0)
+beta0_robust_raw   <- as.vector(samples_robust_raw$BUGSoutput$sims.list$beta0)
+
+beta1_robust_clean <- as.vector(samples_robust_clean$BUGSoutput$sims.list$beta1)
+beta1_robust_raw   <- as.vector(samples_robust_raw$BUGSoutput$sims.list$beta1)
+
+beta3_robust_clean <- as.vector(samples_robust_clean$BUGSoutput$sims.list$beta3)
+beta3_robust_raw   <- as.vector(samples_robust_raw$BUGSoutput$sims.list$beta3)
+
+split_title <- function(prefix, label, color, cex = 2.3) {
+    old <- par(xpd = NA, font = 2)
+    on.exit(par(old))
+    xlim <- par("usr")[1:2]
+    ylim <- par("usr")[3:4]
+    dy <- 0.09 * diff(ylim)
+    y_label <- ylim[2] + 0.03 * diff(ylim)
+    y_prefix <- y_label + dy
+    text(mean(xlim), y_prefix, prefix, adj = c(0.5, 0), cex = cex, font = 2, col = "black")
+    text(mean(xlim), y_label, label, adj = c(0.5, 0), cex = cex, font = 2, col = color)
+}
+
+panel_xlim <- function(...) {
+    xs <- unlist(lapply(list(...), function(s) density(s)$x))
+    xlim_range <- range(c(0, xs))
+    pad <- max(0.01, 0.06 * diff(xlim_range))
+    xlim_range + c(-pad, pad)
+}
+
+plot_effect_posterior <- function(samples_main, samples_rob_raw,
+                                  color, xlab_expr, param_label, show_ylab = FALSE) {
+    dens_main <- density(samples_main)
+    dens_rob  <- density(samples_rob_raw)
+    dark_col  <- darken_color(color)
+
+    xlim_range <- panel_xlim(samples_main, samples_rob_raw)
+    ylim_range <- c(0, max(dens_main$y, dens_rob$y) * 1.08)
+
+    plot(NA, type = "n", ann = FALSE, axes = FALSE,
+         xlim = xlim_range, ylim = ylim_range)
+    polygon(c(dens_main$x, rev(dens_main$x)),
+            c(dens_main$y, rep(0, length(dens_main$y))),
+            col = adjustcolor(color, 0.35), border = NA)
+    lines(dens_main, col = color, lwd = 3)
+    lines(dens_rob, col = dark_col, lwd = 4, lty = 3)
+    abline(v = 0, lty = 1, lwd = 2, col = "red")
+
+    axis(1, cex.axis = 1.35)
+    if (show_ylab) {
+        mtext("Posterior density", 2, line = 2.8, cex = 1.15)
+    }
+    mtext(xlab_expr, 1, line = 3.4, cex = 1.45)
+    split_title("Modality effect on", param_label, color)
+}
+
+make_fig_modality_effects <- function() {
+    par(mfrow = c(1, 3), oma = c(0.55, 0, 0, 0))
+
+    par(mai = c(0.55, 0.10, 0.75, 0.01))
+    plot_effect_posterior(beta0_robust_clean, beta0_robust_raw,
+                          drift.color, expression(beta[0]), "drift rate", show_ylab = TRUE)
+
+    par(mai = c(0.55, 0.01, 0.75, 0.01))
+    plot_effect_posterior(beta1_robust_clean, beta1_robust_raw,
+                          bound.color, expression(beta[1]), "boundary separation")
+
+    par(mai = c(0.55, 0.01, 0.75, 0.08))
+    plot_effect_posterior(beta3_robust_clean, beta3_robust_raw,
+                          nondt.color, expression(beta[3]), "non-decision time")
+    legend("top",
+           legend = c("Robust + clean", "Robust + raw", "Null effect"),
+           col = c("black", "gray35", "red"),
+           lwd = c(3, 4, 2), lty = c(1, 3, 1),
+           bty = "n", cex = 1.8, seg.len = 2)
+}
+
+# Save as PDF
+save_folder <- here("demos", "applications", "lexical-task")
+pdf(file.path(save_folder, "fig3.pdf"), width = 13, height = 5)
+make_fig_modality_effects()
+dev.off()
+
+# Save as PNG
+png(file.path(save_folder, "fig3.png"), width = 13, height = 5, units = "in", res = 300)
+make_fig_modality_effects()
+dev.off()
+
+# Save as EPS
+postscript(file.path(save_folder, "fig3.eps"), width = 13, height = 5,
+           horizontal = FALSE, paper = "special")
+make_fig_modality_effects()
+dev.off()
+```
+## Model Comparison: DIC
+
+Last, we take a look at the DIC values for the different models.
+```{r DIC, eval=FALSE}
+cat("STANDARD EZ-DDM:\n")
+cat("  Raw data:   ", round(samples_standard_raw$BUGSoutput$DIC, 1), "\n")
+cat("  Clean data: ", round(samples_standard_clean$BUGSoutput$DIC, 1), "\n\n")
+cat("ROBUST EZ-DDM:\n")
+cat("  Raw data:   ", round(samples_robust_raw$BUGSoutput$DIC, 1), "\n")
+cat("  Clean data: ", round(samples_robust_clean$BUGSoutput$DIC, 1), "\n")
+```
+
+```{r DIC, echo=FALSE}
+```
+
+# Summary and Conclusions
+
+## Key Findings
+
+1. **Robustness to data cleaning**: The central finding of this demonstration is that the **Robust EZ-DDM produces similar estimates whether applied to raw or cleaned data**, while the **Standard EZ-DDM shows larger differences** between raw and clean data. This demonstrates the practical value of using robust statistics (median, IQR-variance) when outliers or contamination may be present.
+
+2. **Modality effect on drift rate ($\beta_0$)**: Captures the difference in information accumulation rate between visual and auditory word recognition. A positive value indicates higher drift for auditory modality, negative for visual.
+
+3. **Modality effect on non-decision time ($\beta_3$)**: Captures modality differences in encoding and motor time, which is especially relevant when comparing visual text to auditory speech.
+
+4. **Block effect on boundary separation ($\beta_2$)**: The metaregression structure captures how response caution changes across blocks, potentially reflecting practice or fatigue effects over the course of the experiment.
+
+5. **Stability of inference**: When the Robust EZ-DDM yields similar estimates from raw and clean data, we gain confidence that our inferences are not driven by outliers that would be removed during cleaning.
+
+## Recommendations
+
+- **Use Robust EZ-DDM** when data cleaning procedures are uncertain or when outliers are expected
+- The similarity of Robust estimates across raw/clean data can serve as a diagnostic: if results differ substantially, the data may have unusual contamination patterns
+- Standard EZ-DDM remains appropriate for carefully curated, clean data where efficiency (lower posterior variance) is prioritized
+
+# References
+
+Chávez De la Peña, A. F., Shin, E., & Vandekerckhove, J. (2026). Robust Bayesian hypothesis testing with the EZ-DDM. *Behavior Research Methods*. https://doi.org/10.3758/s13428-026-02202-y
+
+Ferrand, L., Méot, A., Spinelli, E., New, B., Pallier, C., Bonin, P., Dufau, S., Mathôt, S., & Grainger, J. (2018). MEGALEX: A megastudy of visual and auditory word recognition. *Behavior Research Methods, 50*(3), 1285-1307. https://doi.org/10.3758/s13428-017-0943-1
+
+# Session Info
+
+```{r}
+sessionInfo()
+```
